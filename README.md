@@ -41,11 +41,16 @@ app in place and keeps your data.
 - Finishing a workout can tick your "Workout" habit automatically (Settings).
 
 **Other**
-- **Home-screen widget** ("Habits today"): see today's habits and tap one to log it.
+- **Home-screen widgets:** "Habits today (list)" shows everything due today; "Single habit" shows one habit
+  you pick (place as many as you like). Tap to log.
 - Reorder habits, archive them, dark mode (follows the phone).
 - App lock with fingerprint / screen lock.
-- Backup: export/restore JSON (everything), export CSV of habits and workouts. Data only lives on the phone,
-  so back up now and then.
+- **Your data:** updates install over the old app and keep everything. Uninstalling deletes the app's data
+  (Android does that), so turn on **Automatic backup** in Settings: it saves a backup file to a folder you
+  choose about once a day, and that folder survives uninstalling. Restore from it after reinstalling.
+- Manual export/restore (JSON) and CSV export of habits and workouts.
+- Advanced settings (week start day, snooze length, reset to defaults) and delete data
+  (habit history, workouts, or everything).
 
 ## Development
 

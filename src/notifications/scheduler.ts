@@ -14,7 +14,6 @@ export const REFRESH_TASK = 'habit-reminder-refresh';
 export const ACTION_DONE = 'done';
 export const ACTION_PLUS1 = 'plus1';
 export const ACTION_SNOOZE = 'snooze';
-const SNOOZE_MIN = 15;
 
 let setupDone = false;
 
@@ -38,8 +37,20 @@ export async function setupNotifications(): Promise<void> {
       vibrationPattern: [0, 250, 150, 250],
     });
   }
+  const { settings } = await loadAll();
+  await registerCategories(settings.snoozeMinutes);
+  try {
+    await Notifications.registerTaskAsync(NOTIFICATION_TASK);
+    await BackgroundTask.registerTaskAsync(REFRESH_TASK, { minimumInterval: 6 * 60 });
+  } catch (e) {
+    console.warn('Background task registration failed', e);
+  }
+}
+
+/** Notification buttons. Re-run when the snooze length changes so the label stays right. */
+export async function registerCategories(snoozeMinutes: number): Promise<void> {
   const bg = { opensAppToForeground: false };
-  const snooze = { identifier: ACTION_SNOOZE, buttonTitle: `Snooze ${SNOOZE_MIN}m`, options: bg };
+  const snooze = { identifier: ACTION_SNOOZE, buttonTitle: `Snooze ${snoozeMinutes}m`, options: bg };
   await Promise.all([
     Notifications.setNotificationCategoryAsync('habit-check', [
       { identifier: ACTION_DONE, buttonTitle: 'Done ✓', options: bg },
@@ -55,12 +66,6 @@ export async function setupNotifications(): Promise<void> {
       snooze,
     ]),
   ]);
-  try {
-    await Notifications.registerTaskAsync(NOTIFICATION_TASK);
-    await BackgroundTask.registerTaskAsync(REFRESH_TASK, { minimumInterval: 6 * 60 });
-  } catch (e) {
-    console.warn('Background task registration failed', e);
-  }
 }
 
 export async function ensurePermission(ask: boolean): Promise<boolean> {
@@ -145,7 +150,7 @@ export async function handleNotificationResponse(response: Notifications.Notific
   const data = req.content.data as { habitId?: string; date?: string } | undefined;
   await Notifications.dismissNotificationAsync(req.identifier).catch(() => {});
   if (!data?.habitId || !data.date) return false;
-  const { habits } = await loadAll();
+  const { habits, settings } = await loadAll();
   const habit = habits.find((h) => h.id === data.habitId);
   if (!habit) return false;
 
@@ -155,7 +160,7 @@ export async function handleNotificationResponse(response: Notifications.Notific
       content: contentFor(habit, data.date, true),
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: SNOOZE_MIN * 60,
+        seconds: Math.max(1, settings.snoozeMinutes) * 60,
         channelId: CHANNEL_ID,
       },
     });

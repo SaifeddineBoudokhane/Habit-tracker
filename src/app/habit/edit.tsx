@@ -6,7 +6,7 @@ import { TimeField } from '@/components/time-field';
 import { Body, Button, Card, Chip, Input, Label, NumberInput, Segmented } from '@/components/ui';
 import { EMOJI_SUGGESTIONS, HABIT_COLORS, useColors } from '@/constants/theme';
 import { newId, useStore } from '@/data/store';
-import { weekdayShort } from '@/lib/dates';
+import { getWeekStartDay, weekdayShort } from '@/lib/dates';
 import type { Habit, HabitGroup, HabitKind, Reminder, Schedule, Weekday } from '@/lib/types';
 import { ensurePermission } from '@/notifications/scheduler';
 
@@ -40,7 +40,6 @@ const GROUP_OPTIONS: { value: HabitGroup; label: string }[] = [
   { value: 'evening', label: 'Evening' },
 ];
 
-const WEEK_ORDER: Weekday[] = [1, 2, 3, 4, 5, 6, 0];
 
 export default function EditHabitScreen() {
   const c = useColors();
@@ -168,7 +167,7 @@ export default function EditHabitScreen() {
             <Segmented options={SCHEDULE_OPTIONS} value={schedType} onChange={setSchedType} />
             {schedType === 'weekdays' && (
               <View style={[s.row, { marginTop: 12 }]}>
-                {WEEK_ORDER.map((d) => (
+                {Array.from({ length: 7 }, (_, i) => ((getWeekStartDay() + i) % 7) as Weekday).map((d) => (
                   <Chip
                     key={d}
                     label={weekdayShort(d)}

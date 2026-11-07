@@ -4,10 +4,14 @@
 import './src/notifications/tasks';
 
 import { Platform } from 'react-native';
-import { registerWidgetTaskHandler } from 'react-native-android-widget';
+import { registerWidgetConfigurationScreen, registerWidgetTaskHandler } from 'react-native-android-widget';
 
+import { HabitWidgetConfiguration } from './src/widget/configure';
 import { widgetTaskHandler } from './src/widget/handler';
 
 import 'expo-router/entry';
 
-if (Platform.OS === 'android') registerWidgetTaskHandler(widgetTaskHandler);
+if (Platform.OS === 'android') {
+  registerWidgetTaskHandler(widgetTaskHandler);
+  registerWidgetConfigurationScreen(HabitWidgetConfiguration);
+}

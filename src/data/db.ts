@@ -1,6 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 
 import type { BackupData } from '@/lib/backup';
+import { setWeekStartDay } from '@/lib/dates';
 import type { Entry, Exercise, Goal, Habit, Settings, Workout, WorkoutSet, WorkoutTemplate } from '@/lib/types';
 import { DEFAULT_SETTINGS } from '@/lib/types';
 import { DEFAULT_EXERCISES } from '@/lib/workouts';
@@ -61,13 +62,39 @@ async function migrate(db: SQLite.SQLiteDatabase) {
         );
         CREATE INDEX IF NOT EXISTS sets_workout ON sets (workout_id);
       `);
-      for (const [i, ex] of DEFAULT_EXERCISES.entries()) {
-        const e: Exercise = { id: `default-${i}`, ...ex };
-        await db.runAsync('INSERT OR IGNORE INTO exercises (id, data) VALUES (?, ?)', e.id, JSON.stringify(e));
-      }
+      await seedExercises(db);
       await db.execAsync('PRAGMA user_version = 2');
     });
   }
+}
+
+async function seedExercises(db: Pick<SQLite.SQLiteDatabase, 'runAsync'>) {
+  for (const [i, ex] of DEFAULT_EXERCISES.entries()) {
+    const e: Exercise = { id: `default-${i}`, ...ex };
+    await db.runAsync('INSERT OR IGNORE INTO exercises (id, data) VALUES (?, ?)', e.id, JSON.stringify(e));
+  }
+}
+
+export type WipeKind = 'history' | 'workouts' | 'everything';
+
+/**
+ * - history: every habit's logged days (habits, goals and settings stay)
+ * - workouts: all workouts and sets (exercises and templates stay)
+ * - everything: back to a fresh install (default exercises are re-added)
+ */
+export async function wipe(kind: WipeKind): Promise<void> {
+  const db = await getDb();
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    if (kind === 'history' || kind === 'everything') await tx.runAsync('DELETE FROM entries');
+    if (kind === 'workouts' || kind === 'everything') {
+      await tx.runAsync('DELETE FROM sets');
+      await tx.runAsync('DELETE FROM workouts');
+    }
+    if (kind === 'everything') {
+      for (const t of ['habits', 'goals', 'exercises', 'templates', 'settings']) await tx.runAsync(`DELETE FROM ${t}`);
+      await seedExercises(tx);
+    }
+  });
 }
 
 export type DocTable = 'goals' | 'exercises' | 'templates' | 'workouts';
@@ -128,6 +155,7 @@ export async function loadAll(): Promise<BackupData> {
       // ignore corrupt setting, keep default
     }
   }
+  setWeekStartDay(settings.weekStartDay);
   const setRows = await db.getAllAsync<{ data: string }>('SELECT data FROM sets');
   return {
     habits: habitRows.map((r) => JSON.parse(r.data) as Habit),
@@ -185,6 +213,16 @@ export async function putEntry(e: Entry): Promise<void> {
     e.skipped ? 1 : 0,
     e.note || null,
   );
+}
+
+/** Writes only the given keys, so concurrent writers (app, background tasks) don't overwrite each other. */
+export async function patchSettings(patch: Partial<Settings>): Promise<void> {
+  const db = await getDb();
+  await db.withTransactionAsync(async () => {
+    for (const [k, v] of Object.entries(patch)) {
+      await db.runAsync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', k, JSON.stringify(v));
+    }
+  });
 }
 
 export async function saveSettings(s: Settings): Promise<void> {

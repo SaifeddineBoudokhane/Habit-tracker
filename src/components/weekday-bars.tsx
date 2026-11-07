@@ -1,14 +1,15 @@
 import { Text, View } from 'react-native';
 
 import { useColors } from '@/constants/theme';
+import { getWeekStartDay } from '@/lib/dates';
 import type { WeekdayStat } from '@/lib/stats';
 
-const ORDER = [1, 2, 3, 4, 5, 6, 0];
 const NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** Completion % per weekday, best and worst days highlighted. */
 export function WeekdayBars({ stats, color }: { stats: WeekdayStat[]; color: string }) {
   const c = useColors();
+  const ORDER = Array.from({ length: 7 }, (_, i) => (getWeekStartDay() + i) % 7);
   const rates = stats.map((s) => (s.due ? s.done / s.due : null));
   const valid = rates.filter((r): r is number => r !== null);
   const max = valid.length ? Math.max(...valid) : 0;

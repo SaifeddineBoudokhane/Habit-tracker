@@ -17,3 +17,17 @@ test('weekStart is Monday', () => {
   expect(weekStart('2026-11-02')).toBe('2026-11-02');
   expect(weekStart('2026-11-05')).toBe('2026-11-02');
 });
+
+test('weekStart follows the configured first day', () => {
+  const { setWeekStartDay } = jest.requireActual('../dates') as typeof import('../dates');
+  try {
+    setWeekStartDay(0);
+    expect(weekStart('2026-11-08')).toBe('2026-11-08'); // Sunday starts its own week
+    expect(weekStart('2026-11-07')).toBe('2026-11-01');
+    setWeekStartDay(6);
+    expect(weekStart('2026-11-07')).toBe('2026-11-07'); // Saturday
+    expect(weekStart('2026-11-06')).toBe('2026-10-31');
+  } finally {
+    setWeekStartDay(1);
+  }
+});

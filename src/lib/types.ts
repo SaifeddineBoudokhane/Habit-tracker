@@ -65,6 +65,18 @@ export interface Settings {
   workoutHabitId: string;
   /** Running duration timers: habitId -> start timestamp (ms). */
   timers: Record<string, number>;
+  /** First day of the week for weekly quotas and stats: 1 = Monday, 0 = Sunday, 6 = Saturday. */
+  weekStartDay: 0 | 1 | 6;
+  /** Snooze length for the notification button, in minutes. */
+  snoozeMinutes: number;
+  /** Folder (Android content URI) for automatic backups, '' = off. */
+  autoBackupDir: string;
+  /** ISO time of the last successful automatic backup. */
+  lastAutoBackupAt: string;
+  /** Error message of the last failed automatic backup, '' if it worked. */
+  autoBackupError: string;
+  /** Single-habit widgets: widgetId -> habitId. */
+  widgetHabits: Record<string, string>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -77,6 +89,12 @@ export const DEFAULT_SETTINGS: Settings = {
   restSeconds: 90,
   workoutHabitId: '',
   timers: {},
+  weekStartDay: 1,
+  snoozeMinutes: 15,
+  autoBackupDir: '',
+  lastAutoBackupAt: '',
+  autoBackupError: '',
+  widgetHabits: {},
 };
 
 /** habitId -> date key -> entry */

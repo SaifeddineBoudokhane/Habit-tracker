@@ -9,7 +9,7 @@ import { YearHeatmap } from '@/components/year-heatmap';
 import { Body, Button, Card, Label } from '@/components/ui';
 import { useColors } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { addDays, fromKey, monthLabel, prettyDate, toKey, weekStart, weekdayShort } from '@/lib/dates';
+import { addDays, fromKey, getWeekStartDay, monthLabel, prettyDate, toKey, weekStart, weekdayShort } from '@/lib/dates';
 import { reminderTimes } from '@/lib/reminders';
 import { describeSchedule, getEntry, isComplete, isScheduled, isSlip } from '@/lib/schedule';
 import { periodRate, weekdayStats } from '@/lib/stats';
@@ -168,7 +168,6 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-const WEEK_HEADER = [1, 2, 3, 4, 5, 6, 0];
 
 function MonthCalendar({ habit, onPick }: { habit: Habit; onPick: (date: string) => void }) {
   const c = useColors();
@@ -176,7 +175,9 @@ function MonthCalendar({ habit, onPick }: { habit: Habit; onPick: (date: string)
   const [month, setMonth] = useState(today.slice(0, 7) + '-01');
 
   const first = fromKey(month);
-  const lead = (first.getDay() + 6) % 7;
+  const startDay = getWeekStartDay();
+  const weekHeader = Array.from({ length: 7 }, (_, i) => (startDay + i) % 7);
+  const lead = (first.getDay() - startDay + 7) % 7;
   const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
   const cells: (string | null)[] = Array(lead).fill(null);
   for (let d = 0; d < daysInMonth; d++) cells.push(addDays(month, d));
@@ -196,7 +197,7 @@ function MonthCalendar({ habit, onPick }: { habit: Habit; onPick: (date: string)
         </Pressable>
       </View>
       <View style={s.grid}>
-        {WEEK_HEADER.map((d) => (
+        {weekHeader.map((d) => (
           <Text key={d} style={[s.headCell, { color: c.textSecondary }]}>
             {weekdayShort(d).slice(0, 2)}
           </Text>

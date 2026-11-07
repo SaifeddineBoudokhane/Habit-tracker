@@ -9,17 +9,21 @@ import { Alert, Linking, ScrollView, StyleSheet, Switch, View } from 'react-nati
 
 import { canUseAppLock, confirmIdentity } from '@/components/app-lock';
 import { TimeField } from '@/components/time-field';
-import { Body, Button, Card, Chip, Label, NumberInput } from '@/components/ui';
+import { Body, Button, Card, Chip, Label, NumberInput, Segmented } from '@/components/ui';
 import { useColors } from '@/constants/theme';
+import { folderLabel, pickBackupFolder } from '@/data/auto-backup';
+import type { WipeKind } from '@/data/db';
 import { useStore } from '@/data/store';
 import { entriesToCsv, makeBackup, parseBackup, workoutsToCsv } from '@/lib/backup';
 import { toKey } from '@/lib/dates';
+import { DEFAULT_SETTINGS } from '@/lib/types';
 import { PLAN_PREFIX } from '@/lib/reminders';
 import { CHANNEL_ID, ensurePermission, syncReminders } from '@/notifications/scheduler';
 
 export default function SettingsScreen() {
   const c = useColors();
-  const { habits, entries, settings, updateSettings, restore, goals, exercises, templates, workouts, sets } = useStore();
+  const { habits, entries, settings, updateSettings, restore, goals, exercises, templates, workouts, sets, backupNow, wipe } =
+    useStore();
   const [permission, setPermission] = useState<boolean | null>(null);
   const [scheduledCount, setScheduledCount] = useState(0);
   const [now, setNow] = useState(() => new Date());
@@ -98,6 +102,62 @@ export default function SettingsScreen() {
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: CHANNEL_ID },
     });
   };
+
+  const chooseFolder = async () => {
+    try {
+      const uri = await pickBackupFolder();
+      await updateSettings({ autoBackupDir: uri });
+      const res = await backupNow();
+      if (res?.autoBackupError) Alert.alert('Backup failed', res.autoBackupError);
+    } catch (e) {
+      // Cancelled picker throws too; only report real failures.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/cancel/i.test(msg)) Alert.alert('Could not use that folder', msg);
+    }
+  };
+
+  const confirmWipe = (kind: WipeKind) => {
+    const text = {
+      history: ['Delete habit history?', 'Every logged day, note and skip is deleted. Your habits, goals and workouts stay.'],
+      workouts: ['Delete all workouts?', 'Every workout and set is deleted. Exercises and templates stay.'],
+      everything: ['Delete EVERYTHING?', 'All habits, history, goals, workouts and settings are deleted. The app goes back to a fresh install.'],
+    }[kind];
+    Alert.alert(text[0], `${text[1]}\n\nThis can’t be undone. Export a backup first if you might want it back.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Export backup first', onPress: exportJson },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () =>
+          kind === 'everything'
+            ? Alert.alert('Are you sure?', 'Last chance: everything in the app will be gone.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete everything', style: 'destructive', onPress: () => wipe(kind) },
+              ])
+            : wipe(kind),
+      },
+    ]);
+  };
+
+  const resetSettings = () =>
+    Alert.alert('Reset settings?', 'Quiet hours, rest timer, snooze, week start, app lock and the workout habit go back to defaults. Your data is not touched.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reset',
+        onPress: () =>
+          updateSettings({
+            quietEnabled: DEFAULT_SETTINGS.quietEnabled,
+            quietStart: DEFAULT_SETTINGS.quietStart,
+            quietEnd: DEFAULT_SETTINGS.quietEnd,
+            skipsPerMonth: DEFAULT_SETTINGS.skipsPerMonth,
+            appLock: DEFAULT_SETTINGS.appLock,
+            restSeconds: DEFAULT_SETTINGS.restSeconds,
+            workoutHabitId: DEFAULT_SETTINGS.workoutHabitId,
+            weekStartDay: DEFAULT_SETTINGS.weekStartDay,
+            snoozeMinutes: DEFAULT_SETTINGS.snoozeMinutes,
+          }),
+      },
+    ]);
 
   const daysSinceBackup = settings.lastBackupAt
     ? Math.floor((now.getTime() - new Date(settings.lastBackupAt).getTime()) / 86_400_000)
@@ -208,6 +268,78 @@ export default function SettingsScreen() {
         <Body muted style={{ marginTop: 8, fontSize: 13 }}>
           Save the JSON to Google Drive or email it to yourself. Restore it here on a new phone.
         </Body>
+      </Card>
+
+      <Card>
+        <Label>Automatic backup</Label>
+        <Body muted style={{ fontSize: 13, marginBottom: 10 }}>
+          Saves a backup file to a folder on your phone about once a day. Files in that folder are kept even if you
+          uninstall the app, so you can restore after reinstalling or on a new phone.
+        </Body>
+        {settings.autoBackupDir ? (
+          <View style={{ gap: 6 }}>
+            <Body>📁 {folderLabel(settings.autoBackupDir)}</Body>
+            {settings.autoBackupError ? (
+              <Body style={{ color: c.danger }}>Last backup failed: {settings.autoBackupError}</Body>
+            ) : (
+              <Body muted>
+                {settings.lastAutoBackupAt
+                  ? `Last backup: ${new Date(settings.lastAutoBackupAt).toLocaleString()}`
+                  : 'No backup yet.'}
+              </Body>
+            )}
+            <View style={[s.inline, { marginTop: 6 }]}>
+              <Button
+                title="Back up now"
+                kind="secondary"
+                onPress={async () => {
+                  const r = await backupNow();
+                  Alert.alert(r?.autoBackupError ? 'Backup failed' : 'Backed up', r?.autoBackupError || 'Saved habit-tracker-latest.json.');
+                }}
+              />
+              <Button title="Change folder" kind="secondary" onPress={chooseFolder} />
+              <Button title="Turn off" kind="secondary" onPress={() => updateSettings({ autoBackupDir: '' })} />
+            </View>
+          </View>
+        ) : (
+          <Button title="Choose backup folder" onPress={chooseFolder} />
+        )}
+        <Body muted style={{ marginTop: 10, fontSize: 13 }}>
+          To restore after reinstalling: Restore from backup → pick habit-tracker-latest.json in that folder.
+        </Body>
+      </Card>
+
+      <Card>
+        <Label>Advanced</Label>
+        <Body>Week starts on</Body>
+        <View style={{ marginTop: 8 }}>
+          <Segmented
+            options={[
+              { value: '1', label: 'Monday' },
+              { value: '0', label: 'Sunday' },
+              { value: '6', label: 'Saturday' },
+            ]}
+            value={String(settings.weekStartDay)}
+            onChange={(v) => updateSettings({ weekStartDay: Number(v) as 0 | 1 | 6 })}
+          />
+        </View>
+        <Body muted style={{ fontSize: 13, marginTop: 6 }}>Used for “X times per week” habits, weekly stats and calendars.</Body>
+        <View style={[s.inline, { marginTop: 14 }]}>
+          <Body>Snooze button length</Body>
+          <NumberInput value={settings.snoozeMinutes} min={1} onChange={(n) => updateSettings({ snoozeMinutes: n })} />
+          <Body muted>minutes</Body>
+        </View>
+        <Button title="Reset settings to defaults" kind="secondary" style={{ marginTop: 14 }} onPress={resetSettings} />
+      </Card>
+
+      <Card style={{ borderColor: c.danger }}>
+        <Label>Delete data</Label>
+        <View style={{ gap: 10 }}>
+          <Button title="Delete habit history" kind="danger" onPress={() => confirmWipe('history')} />
+          <Button title="Delete all workouts" kind="danger" onPress={() => confirmWipe('workouts')} />
+          <Button title="Delete everything" kind="danger" onPress={() => confirmWipe('everything')} />
+        </View>
+        <Body muted style={{ marginTop: 8, fontSize: 13 }}>To delete a single habit or workout, open it and use Delete there.</Body>
       </Card>
 
       <Body muted style={{ textAlign: 'center', fontSize: 12 }}>

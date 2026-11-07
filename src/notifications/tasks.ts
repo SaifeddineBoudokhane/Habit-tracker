@@ -6,6 +6,7 @@ import * as BackgroundTask from 'expo-background-task';
 import type * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 
+import { runAutoBackup } from '@/data/auto-backup';
 import { refreshWidget } from '@/widget/handler';
 
 import { NOTIFICATION_TASK, REFRESH_TASK, handleNotificationResponse, syncReminders } from './scheduler';
@@ -24,6 +25,7 @@ TaskManager.defineTask(REFRESH_TASK, async () => {
   try {
     await syncReminders();
     await refreshWidget();
+    await runAutoBackup().catch(() => null);
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch {
     return BackgroundTask.BackgroundTaskResult.Failed;

@@ -38,10 +38,21 @@ export function weekday(key: string): number {
   return fromKey(key).getDay();
 }
 
-/** Monday of the week containing key. */
+let firstDayOfWeek = 1;
+
+/** 1 = Monday (default), 0 = Sunday, 6 = Saturday. Set from the user's settings. */
+export function setWeekStartDay(day: number): void {
+  firstDayOfWeek = day === 0 || day === 6 ? day : 1;
+}
+
+export function getWeekStartDay(): number {
+  return firstDayOfWeek;
+}
+
+/** First day (per setting, Monday by default) of the week containing key. */
 export function weekStart(key: string): string {
   const wd = weekday(key);
-  return addDays(key, -((wd + 6) % 7));
+  return addDays(key, -((wd - firstDayOfWeek + 7) % 7));
 }
 
 export function monthKey(key: string): string {

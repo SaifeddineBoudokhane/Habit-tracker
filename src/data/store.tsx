@@ -3,13 +3,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AppState } from 'react-native';
 
 import type { Backup, BackupData } from '@/lib/backup';
-import { todayKey } from '@/lib/dates';
+import { setWeekStartDay, todayKey } from '@/lib/dates';
 import type { Entry, EntryIndex, Exercise, Goal, Habit, Settings, Workout, WorkoutSet, WorkoutTemplate } from '@/lib/types';
 import { DEFAULT_SETTINGS } from '@/lib/types';
-import { handleNotificationResponse, setupNotifications, syncReminders } from '@/notifications/scheduler';
+import { handleNotificationResponse, registerCategories, setupNotifications, syncReminders } from '@/notifications/scheduler';
 import { refreshWidget } from '@/widget/handler';
 
 import { emptyEntry } from './actions';
+import { runAutoBackup } from './auto-backup';
 import * as db from './db';
 
 export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -34,6 +35,9 @@ interface Store extends BackupData {
   saveSet(s: WorkoutSet): Promise<void>;
   removeSet(id: string): Promise<void>;
   restore(b: Backup): Promise<void>;
+  backupNow(): Promise<Partial<Settings> | null>;
+  wipe(kind: db.WipeKind): Promise<void>;
+  reload(): Promise<void>;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -75,6 +79,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }, 800);
   }, []);
 
+  /** Merge settings changed outside React (e.g. by the automatic backup) into state. */
+  const mergeSettings = useCallback((patch: Partial<Settings> | null) => {
+    if (!patch) return;
+    settingsRef.current = { ...settingsRef.current, ...patch };
+    setSettings(settingsRef.current);
+  }, []);
+
   const reload = useCallback(async () => {
     const data = await db.loadAll();
     setHabits(data.habits);
@@ -97,10 +108,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setReady(true);
       await setupNotifications().catch((e) => console.warn('Notification setup failed', e));
       scheduleSync();
+      mergeSettings(await runAutoBackup().catch(() => null));
     })();
     // Foreground: pick up changes made by notification buttons, roll "today" over, refresh reminders.
     const appSub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') reload().then(scheduleSync);
+      if (state === 'active')
+        reload()
+          .then(scheduleSync)
+          .then(() => runAutoBackup())
+          .then(mergeSettings)
+          .catch((e) => console.warn(e));
     });
     const respSub = Notifications.addNotificationResponseReceivedListener((response) => {
       handleNotificationResponse(response)
@@ -117,7 +134,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       respSub.remove();
       clearInterval(tick);
     };
-  }, [reload, scheduleSync]);
+  }, [reload, scheduleSync, mergeSettings]);
 
   const index = useMemo(() => db.buildIndex(entries), [entries]);
 
@@ -177,8 +194,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Ref so rapid successive updates (e.g. timer start + stop) don't clobber each other.
       const next = { ...settingsRef.current, ...patch };
       settingsRef.current = next;
+      if (patch.weekStartDay !== undefined) setWeekStartDay(next.weekStartDay);
       setSettings(next);
-      await db.saveSettings(next);
+      await db.patchSettings(patch);
+      if (patch.snoozeMinutes !== undefined) registerCategories(next.snoozeMinutes).catch(() => {});
       scheduleSync();
     },
     [scheduleSync],
@@ -237,6 +256,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [reload, scheduleSync, exercises],
   );
 
+  const wipe = useCallback(
+    async (kind: db.WipeKind) => {
+      await db.wipe(kind);
+      await reload();
+      scheduleSync();
+    },
+    [reload, scheduleSync],
+  );
+
+  const backupNow = useCallback(async () => {
+    const patch = await runAutoBackup(true);
+    mergeSettings(patch);
+    return patch;
+  }, [mergeSettings]);
+
   const value: Store = {
     ready,
     habits,
@@ -265,6 +299,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     saveSet,
     removeSet,
     restore,
+    backupNow,
+    wipe,
+    reload,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
