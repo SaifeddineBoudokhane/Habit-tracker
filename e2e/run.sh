@@ -2,11 +2,17 @@
 # Runs inside the emulator job: install the APK, run every Maestro flow, collect evidence.
 set -u
 mkdir -p e2e-out/shots
+# Hide system "isn't responding" dialogs (e.g. the emulator's launcher) so they can't cover the app.
+adb shell settings put global hide_error_dialogs 1 || true
+adb shell settings put secure anr_show_background 0 || true
+# Let the freshly booted emulator settle before driving it.
+adb shell input keyevent KEYCODE_HOME || true
+sleep 20
 adb install -r habit-tracker-x86_64.apk
 adb logcat -c
 cd e2e-out
 status=0
-for f in ../e2e/*.yaml; do
+for f in ../e2e/0*.yaml; do
   name=$(basename "$f" .yaml)
   echo "::group::$name"
   if "$HOME/.maestro/bin/maestro" test "$f" --debug-output "debug-$name"; then

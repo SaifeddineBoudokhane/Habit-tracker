@@ -2,6 +2,7 @@ appId: com.saifeddine.habittracker
 ---
 - launchApp:
     clearState: true
+- runFlow: dismiss-system-dialogs.yaml
 - extendedWaitUntil:
     visible: "Today"
     timeout: 30000

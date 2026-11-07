@@ -2,6 +2,7 @@ appId: com.saifeddine.habittracker
 ---
 - launchApp:
     clearState: true
+- runFlow: dismiss-system-dialogs.yaml
 - extendedWaitUntil:
     visible: "Create your first habit"
     timeout: 30000

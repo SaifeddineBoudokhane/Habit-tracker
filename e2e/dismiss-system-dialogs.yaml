@@ -1,0 +1,9 @@
+# Shared step: close a system "app isn't responding" dialog if the emulator shows one.
+appId: com.saifeddine.habittracker
+---
+- tapOn:
+    text: "Wait"
+    optional: true
+- tapOn:
+    text: "Wait"
+    optional: true
