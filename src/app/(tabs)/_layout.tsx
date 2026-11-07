@@ -11,6 +11,8 @@ export default function TabsLayout() {
     <Tabs screenOptions={{ headerTitleStyle: { fontWeight: '700' } }}>
       <Tabs.Screen name="index" options={{ title: 'Today', tabBarIcon: icon('✅') }} />
       <Tabs.Screen name="habits" options={{ title: 'Habits', tabBarIcon: icon('📋') }} />
+      <Tabs.Screen name="workouts" options={{ title: 'Workouts', tabBarIcon: icon('🏋️') }} />
+      <Tabs.Screen name="stats" options={{ title: 'Stats', tabBarIcon: icon('📈') }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings', tabBarIcon: icon('⚙️') }} />
     </Tabs>
   );

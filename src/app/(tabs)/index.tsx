@@ -9,7 +9,14 @@ import { useColors } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { addDays, prettyDate } from '@/lib/dates';
 import { getEntry, isComplete, isDueOn } from '@/lib/schedule';
-import type { Habit } from '@/lib/types';
+import type { Habit, HabitGroup } from '@/lib/types';
+
+const GROUPS: { key: HabitGroup; label: string }[] = [
+  { key: 'morning', label: '🌅 Morning' },
+  { key: 'afternoon', label: '☀️ Afternoon' },
+  { key: 'evening', label: '🌙 Evening' },
+  { key: 'anytime', label: 'Anytime' },
+];
 
 export default function TodayScreen() {
   const c = useColors();
@@ -22,6 +29,9 @@ export default function TodayScreen() {
   const active = habits.filter((h) => !h.archived && h.startDate <= date);
   const due = active.filter((h) => isDueOn(h, index, date));
   const others = active.filter((h) => !isDueOn(h, index, date));
+  const sections = GROUPS.map((g) => ({ ...g, items: due.filter((h) => (h.group ?? 'anytime') === g.key) })).filter(
+    (g) => g.items.length > 0,
+  );
   const trackable = due.filter((h) => h.kind !== 'avoid');
   const doneCount = trackable.filter((h) => {
     const e = getEntry(index, h.id, date);
@@ -65,8 +75,13 @@ export default function TodayScreen() {
 
       <ScrollView contentContainerStyle={s.list}>
         {due.length === 0 && <Body muted style={{ textAlign: 'center', marginTop: 24 }}>Nothing due {offset === 0 ? 'today' : 'this day'} 🎉</Body>}
-        {due.map((h) => (
-          <HabitRow key={h.id} habit={h} date={date} onEdit={() => setEditing(h)} />
+        {sections.map(({ key, label, items }) => (
+          <View key={key} style={{ gap: 10 }}>
+            {sections.length > 1 && <Text style={[s.section, { color: c.textSecondary }]}>{label}</Text>}
+            {items.map((h) => (
+              <HabitRow key={h.id} habit={h} date={date} onEdit={() => setEditing(h)} />
+            ))}
+          </View>
         ))}
 
         {others.length > 0 && (
@@ -101,6 +116,7 @@ const s = StyleSheet.create({
   progressTrack: { height: 4 },
   progressFill: { height: 4 },
   list: { padding: 16, gap: 10, paddingBottom: 40 },
+  section: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 6 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyTitle: { fontSize: 22, fontWeight: '700', marginVertical: 8 },
 });

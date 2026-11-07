@@ -12,18 +12,24 @@ import type { Habit } from '@/lib/types';
 export default function HabitsScreen() {
   const c = useColors();
   const nav = useNavigation();
-  const { habits } = useStore();
+  const { habits, reorderHabits } = useStore();
   const [showArchived, setShowArchived] = useState(false);
+  const [reordering, setReordering] = useState(false);
 
   useLayoutEffect(() => {
     nav.setOptions({
+      headerLeft: () => (
+        <Pressable onPress={() => setReordering((r) => !r)} hitSlop={12} style={{ paddingHorizontal: 16 }}>
+          <Text style={{ color: c.accent, fontSize: 16, fontWeight: '600' }}>{reordering ? 'Done' : 'Reorder'}</Text>
+        </Pressable>
+      ),
       headerRight: () => (
         <Pressable onPress={() => router.push('/habit/edit')} hitSlop={12} style={{ paddingHorizontal: 16 }}>
           <Text style={{ color: c.accent, fontSize: 28, fontWeight: '400' }}>＋</Text>
         </Pressable>
       ),
     });
-  }, [nav, c.accent]);
+  }, [nav, c.accent, reordering]);
 
   const active = habits.filter((h) => !h.archived);
   const archived = habits.filter((h) => h.archived);
@@ -36,9 +42,32 @@ export default function HabitsScreen() {
           <Button title="New habit" onPress={() => router.push('/habit/edit')} />
         </View>
       )}
-      {active.map((h) => (
-        <HabitCard key={h.id} habit={h} />
-      ))}
+      {active.map((h, i) =>
+        reordering ? (
+          <View key={h.id} style={[s.card, { backgroundColor: c.card, borderColor: c.border }]}>
+            <Text style={{ fontSize: 22 }}>{h.emoji}</Text>
+            <Text style={{ color: c.text, fontSize: 16, flex: 1 }} numberOfLines={1}>
+              {h.name}
+            </Text>
+            {[-1, 1].map((d) => (
+              <Pressable
+                key={d}
+                disabled={i + d < 0 || i + d >= active.length}
+                hitSlop={8}
+                style={{ paddingHorizontal: 10, opacity: i + d < 0 || i + d >= active.length ? 0.3 : 1 }}
+                onPress={() => {
+                  const ids = active.map((x) => x.id);
+                  [ids[i], ids[i + d]] = [ids[i + d], ids[i]];
+                  reorderHabits([...ids, ...archived.map((x) => x.id)]);
+                }}>
+                <Text style={{ color: c.text, fontSize: 22 }}>{d < 0 ? '↑' : '↓'}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <HabitCard key={h.id} habit={h} />
+        ),
+      )}
       {archived.length > 0 && (
         <>
           <Pressable onPress={() => setShowArchived((v) => !v)} style={{ paddingVertical: 12 }}>

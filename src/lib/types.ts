@@ -13,8 +13,12 @@ export type Reminder =
   | { id: string; kind: 'fixed'; time: string }
   | { id: string; kind: 'interval'; everyMin: number; start: string; end: string };
 
+export type HabitGroup = 'anytime' | 'morning' | 'afternoon' | 'evening';
+
 export interface Habit {
   id: string;
+  /** Section on the Today screen. Missing = 'anytime'. */
+  group?: HabitGroup;
   name: string;
   emoji: string;
   color: string;
@@ -42,6 +46,8 @@ export interface Entry {
   date: string;
   value: number;
   skipped: boolean;
+  /** Optional note, e.g. "felt weak, slept 5h". */
+  note?: string;
 }
 
 export interface Settings {
@@ -51,6 +57,14 @@ export interface Settings {
   skipsPerMonth: number;
   /** ISO timestamp of the last export, '' if never. */
   lastBackupAt: string;
+  /** Require fingerprint / screen lock to open the app. */
+  appLock: boolean;
+  /** Default rest between sets, in seconds. */
+  restSeconds: number;
+  /** Habit ticked automatically when a workout is finished ('' = none). */
+  workoutHabitId: string;
+  /** Running duration timers: habitId -> start timestamp (ms). */
+  timers: Record<string, number>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -59,7 +73,64 @@ export const DEFAULT_SETTINGS: Settings = {
   quietEnd: '07:00',
   skipsPerMonth: 3,
   lastBackupAt: '',
+  appLock: false,
+  restSeconds: 90,
+  workoutHabitId: '',
+  timers: {},
 };
 
 /** habitId -> date key -> entry */
 export type EntryIndex = Map<string, Map<string, Entry>>;
+
+/**
+ * A target total for a habit over a period, e.g. "Workout 150 times in 2026" (metric 'days')
+ * or "Run 100 km this month" (metric 'value', summing logged values).
+ */
+export interface Goal {
+  id: string;
+  habitId: string;
+  metric: 'days' | 'value';
+  target: number;
+  start: string;
+  end: string;
+}
+
+export type ExerciseKind = 'strength' | 'bodyweight' | 'cardio';
+
+export interface Exercise {
+  id: string;
+  name: string;
+  kind: ExerciseKind;
+  archived?: boolean;
+}
+
+export interface WorkoutTemplate {
+  id: string;
+  name: string;
+  exerciseIds: string[];
+}
+
+export interface Workout {
+  id: string;
+  date: string;
+  name: string;
+  templateId: string | null;
+  note: string;
+  startedAt: number;
+  /** null while the workout is in progress. */
+  finishedAt: number | null;
+}
+
+/** strength: reps × weight (kg); bodyweight: reps (+ optional added weight); cardio: distance (km) + duration (s). */
+export interface WorkoutSet {
+  id: string;
+  workoutId: string;
+  exerciseId: string;
+  /** Order within the workout. */
+  order: number;
+  reps: number;
+  weight: number;
+  distance: number;
+  durationSec: number;
+  done: boolean;
+}

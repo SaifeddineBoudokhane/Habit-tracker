@@ -2,27 +2,36 @@ import * as Notifications from 'expo-notifications';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 
+import type { Backup, BackupData } from '@/lib/backup';
 import { todayKey } from '@/lib/dates';
-import type { Backup } from '@/lib/backup';
-import type { Entry, EntryIndex, Habit, Settings } from '@/lib/types';
+import type { Entry, EntryIndex, Exercise, Goal, Habit, Settings, Workout, WorkoutSet, WorkoutTemplate } from '@/lib/types';
 import { DEFAULT_SETTINGS } from '@/lib/types';
 import { handleNotificationResponse, setupNotifications, syncReminders } from '@/notifications/scheduler';
 
-import * as db from './db';
 import { emptyEntry } from './actions';
+import * as db from './db';
 
-interface Store {
+export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+interface Store extends BackupData {
   ready: boolean;
-  habits: Habit[];
-  entries: Entry[];
   index: EntryIndex;
-  settings: Settings;
   today: string;
   entryFor(habitId: string, date: string): Entry;
   setEntry(e: Entry): Promise<void>;
   saveHabit(h: Habit): Promise<void>;
   removeHabit(id: string): Promise<void>;
+  reorderHabits(ids: string[]): Promise<void>;
   updateSettings(patch: Partial<Settings>): Promise<void>;
+  saveGoal(g: Goal): Promise<void>;
+  removeGoal(id: string): Promise<void>;
+  saveExercise(e: Exercise): Promise<void>;
+  saveTemplate(t: WorkoutTemplate): Promise<void>;
+  removeTemplate(id: string): Promise<void>;
+  saveWorkout(w: Workout): Promise<void>;
+  removeWorkout(id: string): Promise<void>;
+  saveSet(s: WorkoutSet): Promise<void>;
+  removeSet(id: string): Promise<void>;
   restore(b: Backup): Promise<void>;
 }
 
@@ -34,13 +43,28 @@ export function useStore(): Store {
   return s;
 }
 
+/** Replace-or-append by id. */
+function upsert<T extends { id: string }>(list: T[], item: T): T[] {
+  const i = list.findIndex((x) => x.id === item.id);
+  if (i === -1) return [...list, item];
+  const next = [...list];
+  next[i] = item;
+  return next;
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [sets, setSets] = useState<WorkoutSet[]>([]);
   const [today, setToday] = useState(todayKey());
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settingsRef = useRef(settings);
 
   const scheduleSync = useCallback(() => {
     if (syncTimer.current) clearTimeout(syncTimer.current);
@@ -54,6 +78,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setHabits(data.habits);
     setEntries(data.entries);
     setSettings(data.settings);
+    settingsRef.current = data.settings;
+    setGoals(data.goals);
+    setExercises(data.exercises.sort((a, b) => a.name.localeCompare(b.name)));
+    setTemplates(data.templates);
+    setWorkouts(data.workouts);
+    setSets(data.sets);
     setToday(todayKey());
   }, []);
 
@@ -96,10 +126,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const setEntry = useCallback(
     async (e: Entry) => {
-      const clean = { ...e, value: Math.max(0, Math.round(e.value * 100) / 100) };
+      const clean: Entry = { ...e, value: Math.max(0, Math.round(e.value * 100) / 100) };
+      if (!clean.note?.trim()) delete clean.note;
       setEntries((prev) => {
         const rest = prev.filter((x) => !(x.habitId === e.habitId && x.date === e.date));
-        return clean.value > 0 || clean.skipped ? [...rest, clean] : rest;
+        return db.isEmptyEntry(clean) ? rest : [...rest, clean];
       });
       await db.putEntry(clean);
       scheduleSync();
@@ -109,13 +140,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const saveHabit = useCallback(
     async (h: Habit) => {
-      setHabits((prev) => {
-        const i = prev.findIndex((x) => x.id === h.id);
-        if (i === -1) return [...prev, h];
-        const next = [...prev];
-        next[i] = h;
-        return next;
-      });
+      setHabits((prev) => upsert(prev, h));
       await db.saveHabit(h);
       scheduleSync();
     },
@@ -126,43 +151,116 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       setHabits((prev) => prev.filter((h) => h.id !== id));
       setEntries((prev) => prev.filter((e) => e.habitId !== id));
+      setGoals((prev) => prev.filter((g) => g.habitId !== id));
       await db.deleteHabit(id);
       scheduleSync();
     },
     [scheduleSync],
   );
 
+  const reorderHabits = useCallback(
+    async (ids: string[]) => {
+      const updated = habits
+        .map((h) => ({ ...h, sortOrder: ids.indexOf(h.id) === -1 ? ids.length + h.sortOrder : ids.indexOf(h.id) }))
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      setHabits(updated);
+      for (const h of updated) await db.saveHabit(h);
+    },
+    [habits],
+  );
+
   const updateSettings = useCallback(
     async (patch: Partial<Settings>) => {
-      const next = { ...settings, ...patch };
+      // Ref so rapid successive updates (e.g. timer start + stop) don't clobber each other.
+      const next = { ...settingsRef.current, ...patch };
+      settingsRef.current = next;
       setSettings(next);
       await db.saveSettings(next);
       scheduleSync();
     },
-    [settings, scheduleSync],
+    [scheduleSync],
   );
+
+  const saveGoal = useCallback(async (g: Goal) => {
+    setGoals((prev) => upsert(prev, g));
+    await db.putDoc('goals', g);
+  }, []);
+  const removeGoal = useCallback(async (id: string) => {
+    setGoals((prev) => prev.filter((g) => g.id !== id));
+    await db.deleteDoc('goals', id);
+  }, []);
+
+  const saveExercise = useCallback(async (e: Exercise) => {
+    setExercises((prev) => upsert(prev, e).sort((a, b) => a.name.localeCompare(b.name)));
+    await db.putDoc('exercises', e);
+  }, []);
+
+  const saveTemplate = useCallback(async (t: WorkoutTemplate) => {
+    setTemplates((prev) => upsert(prev, t));
+    await db.putDoc('templates', t);
+  }, []);
+  const removeTemplate = useCallback(async (id: string) => {
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+    await db.deleteDoc('templates', id);
+  }, []);
+
+  const saveWorkout = useCallback(async (w: Workout) => {
+    setWorkouts((prev) => upsert(prev, w));
+    await db.putDoc('workouts', w);
+  }, []);
+  const removeWorkout = useCallback(async (id: string) => {
+    setWorkouts((prev) => prev.filter((w) => w.id !== id));
+    setSets((prev) => prev.filter((s) => s.workoutId !== id));
+    await db.deleteWorkout(id);
+  }, []);
+
+  const saveSet = useCallback(async (s: WorkoutSet) => {
+    setSets((prev) => upsert(prev, s));
+    await db.putSet(s);
+  }, []);
+  const removeSet = useCallback(async (id: string) => {
+    setSets((prev) => prev.filter((s) => s.id !== id));
+    await db.deleteSet(id);
+  }, []);
 
   const restore = useCallback(
     async (b: Backup) => {
-      await db.replaceAll(b.habits, b.entries, b.settings);
+      // Old backups have no exercise list: keep the current one so workouts still have exercises to pick.
+      const data: BackupData = b.exercises.length ? b : { ...b, exercises };
+      await db.replaceAll(data);
       await reload();
       scheduleSync();
     },
-    [reload, scheduleSync],
+    [reload, scheduleSync, exercises],
   );
 
   const value: Store = {
     ready,
     habits,
     entries,
-    index,
     settings,
+    goals,
+    exercises,
+    templates,
+    workouts,
+    sets,
+    index,
     today,
     entryFor,
     setEntry,
     saveHabit,
     removeHabit,
+    reorderHabits,
     updateSettings,
+    saveGoal,
+    removeGoal,
+    saveExercise,
+    saveTemplate,
+    removeTemplate,
+    saveWorkout,
+    removeWorkout,
+    saveSet,
+    removeSet,
     restore,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

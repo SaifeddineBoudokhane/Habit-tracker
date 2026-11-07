@@ -15,15 +15,36 @@ app in place and keeps your data.
 
 ## Features
 
-- **Habit types:** yes/no, count (8 glasses of water), duration (read 20 min), and avoid (no sugar, streak = days clean).
+**Habits**
+- **Types:** yes/no, count (8 glasses of water), duration (read 20 min, with a built-in timer), and avoid (no sugar, streak = days clean).
 - **Schedules:** every day, specific weekdays, X times per week (any days), every N days.
-- **Today screen:** one-tap check-off, +1 for counts, progress rings, browse back to fix past days.
+- **Today screen:** grouped into Morning / Afternoon / Evening / Anytime, one-tap check-off, +1 for counts,
+  progress rings, browse back to fix past days, a note on any day.
 - **Streaks:** current and best, aware of the schedule. Rest/sick-day skips don't break a streak (limited per month).
 - **Reminders:** fixed times or repeating ("every 60 min, 09:00–21:00"); quiet hours; no reminders once a habit
   is done for the day or the weekly target is met. Notification buttons: **Done**, **+1**, **Snooze 15m**,
   which log without opening the app.
-- **History:** per-habit calendar (tap any day to edit), streaks, 30-day completion rate, totals.
-- **Backup:** export/restore JSON, export CSV. Since data only lives on the phone, back up now and then.
+
+**Insight**
+- Per habit: month calendar (tap a day to edit), 12-month heatmap, completion this week / month / all time,
+  best and worst weekdays, notes.
+- **Goals with deadlines:** "Workout 150 times in 2026", "Run 100 km this month", with progress, a pace marker
+  and a projected finish date.
+- **Stats tab:** overall completion, all active goals, a per-habit table and a workout summary.
+
+**Workouts**
+- Log sessions: weight × reps, bodyweight reps (+ added weight), or distance/time for cardio.
+- Each set shows what you did last time; tick an empty set to repeat it.
+- Templates (Push / Pull / Legs): save a finished workout as one, or build one by hand.
+- Rest timer between sets, with a notification when it's over (works with the screen off).
+- Personal records and a progress chart per exercise (est. 1RM, reps, distance).
+- Finishing a workout can tick your "Workout" habit automatically (Settings).
+
+**Other**
+- Reorder habits, archive them, dark mode (follows the phone).
+- App lock with fingerprint / screen lock.
+- Backup: export/restore JSON (everything), export CSV of habits and workouts. Data only lives on the phone,
+  so back up now and then.
 
 ## Development
 

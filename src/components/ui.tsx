@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
 
 import { useColors } from '@/constants/theme';
@@ -126,3 +126,35 @@ export const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 11, fontSize: 16 },
 });
+
+/** Decimal input for weights/distances. Empty means 0. Keeps the typed text while editing ("62." stays). */
+export function DecimalInput({
+  value,
+  onChange,
+  placeholder,
+  style,
+  integer,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  placeholder?: string;
+  style?: object;
+  integer?: boolean;
+}) {
+  const [text, setText] = useState(value ? String(value) : '');
+  return (
+    <Input
+      keyboardType={integer ? 'number-pad' : 'decimal-pad'}
+      value={text}
+      placeholder={placeholder}
+      selectTextOnFocus
+      onChangeText={(t) => {
+        const clean = t.replace(',', '.').replace(integer ? /[^0-9]/g : /[^0-9.]/g, '');
+        setText(clean);
+        const n = integer ? parseInt(clean, 10) : parseFloat(clean);
+        onChange(Number.isFinite(n) ? n : 0);
+      }}
+      style={[{ textAlign: 'center', paddingHorizontal: 6, paddingVertical: 8 }, style]}
+    />
+  );
+}

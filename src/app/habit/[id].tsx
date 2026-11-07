@@ -3,12 +3,16 @@ import { useLayoutEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { EntryEditor } from '@/components/entry-editor';
+import { GoalCard } from '@/components/goal-card';
+import { WeekdayBars } from '@/components/weekday-bars';
+import { YearHeatmap } from '@/components/year-heatmap';
 import { Body, Button, Card, Label } from '@/components/ui';
 import { useColors } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { addDays, fromKey, monthLabel, toKey, weekdayShort } from '@/lib/dates';
+import { addDays, fromKey, monthLabel, prettyDate, toKey, weekStart, weekdayShort } from '@/lib/dates';
 import { reminderTimes } from '@/lib/reminders';
 import { describeSchedule, getEntry, isComplete, isScheduled, isSlip } from '@/lib/schedule';
+import { periodRate, weekdayStats } from '@/lib/stats';
 import { computeStats } from '@/lib/streaks';
 import type { Habit } from '@/lib/types';
 
@@ -16,7 +20,7 @@ export default function HabitDetailScreen() {
   const c = useColors();
   const nav = useNavigation();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { habits, index, today, saveHabit, removeHabit } = useStore();
+  const { habits, index, today, saveHabit, removeHabit, goals } = useStore();
   const habit = habits.find((h) => h.id === id);
   const [editingDate, setEditingDate] = useState<string | null>(null);
 
@@ -35,6 +39,17 @@ export default function HabitDetailScreen() {
   if (!habit) return <View style={{ flex: 1, backgroundColor: c.background }} />;
   const st = computeStats(habit, index, today);
   const unit = st.unit === 'weeks' ? 'weeks' : 'days';
+  const pct = (r: number | null) => (r === null ? '–' : `${Math.round(r * 100)}%`);
+  const rates = [
+    { label: 'This week', value: periodRate(habit, index, weekStart(today), today, today) },
+    { label: 'This month', value: periodRate(habit, index, today.slice(0, 8) + '01', today, today) },
+    { label: 'All time', value: periodRate(habit, index, '0000-01-01', today, today) },
+  ];
+  const myGoals = goals.filter((g) => g.habitId === habit.id).sort((a, b) => (a.end < b.end ? -1 : 1));
+  const notes = [...(index.get(habit.id)?.values() ?? [])]
+    .filter((e) => e.note)
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+    .slice(0, 10);
 
   const confirmDelete = () =>
     Alert.alert('Delete habit?', `This permanently deletes "${habit.name}" and all its history.`, [
@@ -62,9 +77,57 @@ export default function HabitDetailScreen() {
       </View>
 
       <Card>
-        <MonthCalendar habit={habit} onPick={setEditingDate} />
-        <Body muted style={{ fontSize: 13, marginTop: 10 }}>Tap a day to fix or fill in what you logged.</Body>
+        <Label>Completion</Label>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          {rates.map((r) => (
+            <View key={r.label} style={{ alignItems: 'center', flex: 1 }}>
+              <Text style={{ color: c.text, fontSize: 20, fontWeight: '700' }}>{pct(r.value)}</Text>
+              <Text style={{ color: c.textSecondary, fontSize: 12 }}>{r.label}</Text>
+            </View>
+          ))}
+        </View>
       </Card>
+
+      <Card>
+        <MonthCalendar habit={habit} onPick={setEditingDate} />
+        <Body muted style={{ fontSize: 13, marginTop: 10 }}>Tap a day to fix it, fill it in, or add a note.</Body>
+      </Card>
+
+      <Card>
+        <Label>Last 12 months</Label>
+        <YearHeatmap habit={habit} />
+      </Card>
+
+      <Card>
+        <Label>Goals</Label>
+        {myGoals.length === 0 && <Body muted>No goals yet, e.g. “150 workouts this year”.</Body>}
+        {myGoals.map((g) => (
+          <GoalCard key={g.id} goal={g} habit={habit} />
+        ))}
+        <Button
+          title="+ Add goal"
+          kind="secondary"
+          style={{ marginTop: 10 }}
+          onPress={() => router.push({ pathname: '/goal/edit', params: { habitId: habit.id } })}
+        />
+      </Card>
+
+      <Card>
+        <Label>{habit.kind === 'avoid' ? 'Clean days by weekday' : 'Best and worst days'}</Label>
+        <WeekdayBars stats={weekdayStats(habit, index, today)} color={habit.color} />
+      </Card>
+
+      {notes.length > 0 && (
+        <Card>
+          <Label>Notes</Label>
+          {notes.map((e) => (
+            <Pressable key={e.date} onPress={() => setEditingDate(e.date)} style={{ paddingVertical: 6 }}>
+              <Text style={{ color: c.textSecondary, fontSize: 12 }}>{prettyDate(e.date, today)}</Text>
+              <Body>{e.note}</Body>
+            </Pressable>
+          ))}
+        </Card>
+      )}
 
       <Card>
         <Label>Details</Label>

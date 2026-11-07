@@ -7,18 +7,19 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Linking, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
+import { canUseAppLock, confirmIdentity } from '@/components/app-lock';
 import { TimeField } from '@/components/time-field';
-import { Body, Button, Card, Label, NumberInput } from '@/components/ui';
+import { Body, Button, Card, Chip, Label, NumberInput } from '@/components/ui';
 import { useColors } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { entriesToCsv, makeBackup, parseBackup } from '@/lib/backup';
+import { entriesToCsv, makeBackup, parseBackup, workoutsToCsv } from '@/lib/backup';
 import { toKey } from '@/lib/dates';
 import { PLAN_PREFIX } from '@/lib/reminders';
 import { CHANNEL_ID, ensurePermission, syncReminders } from '@/notifications/scheduler';
 
 export default function SettingsScreen() {
   const c = useColors();
-  const { habits, entries, settings, updateSettings, restore } = useStore();
+  const { habits, entries, settings, updateSettings, restore, goals, exercises, templates, workouts, sets } = useStore();
   const [permission, setPermission] = useState<boolean | null>(null);
   const [scheduledCount, setScheduledCount] = useState(0);
   const [now, setNow] = useState(() => new Date());
@@ -41,7 +42,7 @@ export default function SettingsScreen() {
 
   const exportJson = async () => {
     try {
-      const backup = makeBackup(habits, entries, settings);
+      const backup = makeBackup({ habits, entries, settings, goals, exercises, templates, workouts, sets });
       await share(`habits-backup-${toKey(new Date())}.json`, JSON.stringify(backup, null, 2), 'application/json');
       await updateSettings({ lastBackupAt: new Date().toISOString() });
     } catch (e) {
@@ -52,6 +53,14 @@ export default function SettingsScreen() {
   const exportCsv = async () => {
     try {
       await share(`habits-${toKey(new Date())}.csv`, entriesToCsv(habits, entries), 'text/csv');
+    } catch (e) {
+      Alert.alert('Export failed', String(e));
+    }
+  };
+
+  const exportWorkoutCsv = async () => {
+    try {
+      await share(`workouts-${toKey(new Date())}.csv`, workoutsToCsv(workouts, sets, exercises), 'text/csv');
     } catch (e) {
       Alert.alert('Export failed', String(e));
     }
@@ -146,6 +155,44 @@ export default function SettingsScreen() {
       </Card>
 
       <Card>
+        <Label>Workouts</Label>
+        <Body>Tick this habit when a workout is finished</Body>
+        <View style={[s.chips, { marginTop: 8 }]}>
+          <Chip label="None" selected={!settings.workoutHabitId} onPress={() => updateSettings({ workoutHabitId: '' })} />
+          {habits
+            .filter((h) => !h.archived && h.kind !== 'avoid')
+            .map((h) => (
+              <Chip
+                key={h.id}
+                label={`${h.emoji} ${h.name}`}
+                selected={settings.workoutHabitId === h.id}
+                onPress={() => updateSettings({ workoutHabitId: h.id })}
+              />
+            ))}
+        </View>
+        <View style={[s.inline, { marginTop: 14 }]}>
+          <Body>Rest timer between sets</Body>
+          <NumberInput value={settings.restSeconds} min={0} onChange={(n) => updateSettings({ restSeconds: n })} />
+          <Body muted>seconds (0 = off)</Body>
+        </View>
+      </Card>
+
+      <Card>
+        <Label>Privacy</Label>
+        <View style={s.row}>
+          <Body>App lock (fingerprint / screen lock)</Body>
+          <Switch
+            value={settings.appLock}
+            onValueChange={async (v) => {
+              if (!v) return updateSettings({ appLock: false });
+              if (!(await canUseAppLock())) return Alert.alert('Not available', 'Set up a screen lock or fingerprint on your phone first.');
+              if (await confirmIdentity()) updateSettings({ appLock: true });
+            }}
+          />
+        </View>
+      </Card>
+
+      <Card>
         <Label>Backup</Label>
         <Body style={backupStale ? { color: c.danger } : undefined}>
           {daysSinceBackup === null
@@ -154,7 +201,8 @@ export default function SettingsScreen() {
         </Body>
         <View style={{ gap: 10, marginTop: 12 }}>
           <Button title="Export backup (JSON)" onPress={exportJson} />
-          <Button title="Export history (CSV)" kind="secondary" onPress={exportCsv} />
+          <Button title="Export habit history (CSV)" kind="secondary" onPress={exportCsv} />
+          <Button title="Export workouts (CSV)" kind="secondary" onPress={exportWorkoutCsv} />
           <Button title="Restore from backup" kind="secondary" onPress={importJson} />
         </View>
         <Body muted style={{ marginTop: 8, fontSize: 13 }}>
@@ -173,4 +221,5 @@ const s = StyleSheet.create({
   content: { padding: 16, gap: 14, paddingBottom: 48 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

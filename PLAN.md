@@ -56,7 +56,7 @@ on a rolling window each time the app opens. Android has no such cap.
 - **Export / import backup** as a JSON file you can save to Drive, email and so on.
 - CSV export, if you want to look at the data in a spreadsheet.
 
-### Phase 2 — insight
+### Phase 2 — insight ✅ built
 
 - **Calendar heatmap** per habit (GitHub-style year view).
 - **Stats**: completion % for the week, month and all time; totals (e.g. liters of
@@ -65,7 +65,7 @@ on a rolling window each time the app opens. Android has no such cap.
   "Run 100 km this month", with a progress bar and projected finish.
 - **Notes per check-in**, e.g. "felt weak, slept 5h".
 
-### Phase 3 — workouts (since that's a main use case)
+### Phase 3 — workouts ✅ built
 
 - Workout log per session: exercises, sets × reps × weight, or distance/time for cardio.
 - Reusable workout templates (Push / Pull / Legs).
@@ -73,7 +73,7 @@ on a rolling window each time the app opens. Android has no such cap.
 - Rest timer between sets.
 - Logging a workout automatically ticks the "Workout" habit.
 
-### Nice-to-have (only if you find you actually want them)
+### Nice-to-have ✅ built (widget: see below)
 
 - Home-screen widget to check off habits.
 - Dark mode (cheap, so probably worth doing early).

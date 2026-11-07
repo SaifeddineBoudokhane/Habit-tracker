@@ -5,12 +5,11 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleShee
 import { TimeField } from '@/components/time-field';
 import { Body, Button, Card, Chip, Input, Label, NumberInput, Segmented } from '@/components/ui';
 import { EMOJI_SUGGESTIONS, HABIT_COLORS, useColors } from '@/constants/theme';
-import { useStore } from '@/data/store';
+import { newId, useStore } from '@/data/store';
 import { weekdayShort } from '@/lib/dates';
-import type { Habit, HabitKind, Reminder, Schedule, Weekday } from '@/lib/types';
+import type { Habit, HabitGroup, HabitKind, Reminder, Schedule, Weekday } from '@/lib/types';
 import { ensurePermission } from '@/notifications/scheduler';
 
-const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
 const KIND_OPTIONS: { value: HabitKind; label: string }[] = [
   { value: 'check', label: 'Yes / No' },
@@ -34,6 +33,13 @@ const SCHEDULE_OPTIONS: { value: ScheduleType; label: string }[] = [
   { value: 'everyN', label: 'Every N days' },
 ];
 
+const GROUP_OPTIONS: { value: HabitGroup; label: string }[] = [
+  { value: 'anytime', label: 'Anytime' },
+  { value: 'morning', label: 'Morning' },
+  { value: 'afternoon', label: 'Afternoon' },
+  { value: 'evening', label: 'Evening' },
+];
+
 const WEEK_ORDER: Weekday[] = [1, 2, 3, 4, 5, 6, 0];
 
 export default function EditHabitScreen() {
@@ -55,6 +61,7 @@ export default function EditHabitScreen() {
   );
   const [times, setTimes] = useState(existing?.schedule.type === 'perWeek' ? existing.schedule.times : 3);
   const [everyN, setEveryN] = useState(existing?.schedule.type === 'everyN' ? existing.schedule.n : 2);
+  const [group, setGroup] = useState<HabitGroup>(existing?.group ?? 'anytime');
   const [reminders, setReminders] = useState<Reminder[]>(existing?.reminders ?? []);
 
   useLayoutEffect(() => {
@@ -88,6 +95,7 @@ export default function EditHabitScreen() {
       unit: kind === 'count' ? unit.trim() : kind === 'duration' ? 'min' : '',
       schedule: kind === 'avoid' ? { type: 'daily' } : schedule(),
       reminders,
+      group,
       archived: existing?.archived ?? false,
       sortOrder: existing?.sortOrder ?? habits.length,
       startDate: existing?.startDate ?? today,
@@ -185,6 +193,12 @@ export default function EditHabitScreen() {
             )}
           </Card>
         )}
+
+        <Card>
+          <Label>Time of day</Label>
+          <Segmented options={GROUP_OPTIONS} value={group} onChange={setGroup} />
+          <Body muted style={{ marginTop: 8, fontSize: 13 }}>Groups habits into sections on the Today screen.</Body>
+        </Card>
 
         <Card>
           <Label>Reminders</Label>

@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/constants/theme';
 import { tapped } from '@/data/actions';
 import { useStore } from '@/data/store';
+import { useTicker } from '@/data/timers';
+import { formatDuration } from '@/lib/workouts';
 import { getEntry, isComplete, weekCount } from '@/lib/schedule';
 import { computeStats } from '@/lib/streaks';
 import type { Habit } from '@/lib/types';
@@ -11,7 +13,9 @@ import { ProgressRing } from './progress-ring';
 
 export function HabitRow({ habit, date, onEdit }: { habit: Habit; date: string; onEdit: () => void }) {
   const c = useColors();
-  const { index, setEntry, entryFor, today } = useStore();
+  const { index, setEntry, entryFor, today, settings } = useStore();
+  const timerStart = habit.kind === 'duration' ? (settings.timers?.[habit.id] ?? null) : null;
+  const now = useTicker(timerStart !== null);
   const entry = getEntry(index, habit.id, date);
   const done = isComplete(habit, entry);
   const stats = computeStats(habit, index, today);
@@ -28,6 +32,8 @@ export function HabitRow({ habit, date, onEdit }: { habit: Habit; date: string; 
   } else if (stats.current > 0) {
     parts.push(`🔥 ${stats.current} ${stats.unit === 'weeks' ? 'wk' : stats.current === 1 ? 'day' : 'days'}`);
   }
+
+  if (timerStart !== null) parts.unshift(`⏱ ${formatDuration((now - timerStart) / 1000)}`);
 
   const onTap = () => setEntry(tapped(habit, entryFor(habit.id, date)));
 
