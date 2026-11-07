@@ -13,7 +13,7 @@ import { ProgressRing } from './progress-ring';
 
 export function HabitRow({ habit, date, onEdit }: { habit: Habit; date: string; onEdit: () => void }) {
   const c = useColors();
-  const { index, setEntry, entryFor, today, settings } = useStore();
+  const { index, updateEntry, today, settings } = useStore();
   const timerStart = habit.kind === 'duration' ? (settings.timers?.[habit.id] ?? null) : null;
   const now = useTicker(timerStart !== null);
   const entry = getEntry(index, habit.id, date);
@@ -35,7 +35,7 @@ export function HabitRow({ habit, date, onEdit }: { habit: Habit; date: string; 
 
   if (timerStart !== null) parts.unshift(`⏱ ${formatDuration((now - timerStart) / 1000)}`);
 
-  const onTap = () => setEntry(tapped(habit, entryFor(habit.id, date)));
+  const onTap = () => updateEntry(habit.id, date, (e) => tapped(habit, e));
 
   return (
     <Pressable

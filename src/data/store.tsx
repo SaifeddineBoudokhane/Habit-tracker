@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AppState } from 'react-native';
+import { Alert, AppState } from 'react-native';
 
 import type { Backup, BackupData } from '@/lib/backup';
 import { setWeekStartDay, todayKey } from '@/lib/dates';
@@ -21,6 +21,8 @@ interface Store extends BackupData {
   today: string;
   entryFor(habitId: string, date: string): Entry;
   setEntry(e: Entry): Promise<void>;
+  /** Change an entry based on its latest value (safe for rapid repeated taps). */
+  updateEntry(habitId: string, date: string, fn: (e: Entry) => Entry): Promise<void>;
   saveHabit(h: Habit): Promise<void>;
   removeHabit(id: string): Promise<void>;
   reorderHabits(ids: string[]): Promise<void>;
@@ -70,6 +72,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [today, setToday] = useState(todayKey());
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const settingsRef = useRef(settings);
+  const entriesRef = useRef<Entry[]>([]);
+  const errorShown = useRef(false);
 
   const scheduleSync = useCallback(() => {
     if (syncTimer.current) clearTimeout(syncTimer.current);
@@ -89,6 +93,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const reload = useCallback(async () => {
     const data = await db.loadAll();
     setHabits(data.habits);
+    entriesRef.current = data.entries;
     setEntries(data.entries);
     setSettings(data.settings);
     settingsRef.current = data.settings;
@@ -136,6 +141,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [reload, scheduleSync, mergeSettings]);
 
+  /**
+   * Screens update immediately; the database write runs in the background (queued in order).
+   * If a write fails, say so once and reload what is really stored.
+   */
+  const persist = useCallback(
+    (write: Promise<void>): Promise<void> =>
+      write.catch((e) => {
+        console.warn('Save failed', e);
+        if (!errorShown.current) {
+          errorShown.current = true;
+          Alert.alert('Couldn’t save', `Your last change may not have been saved.\n\n${e instanceof Error ? e.message : String(e)}`, [
+            { text: 'OK', onPress: () => (errorShown.current = false) },
+          ]);
+        }
+        reload().catch(() => {});
+      }),
+    [reload],
+  );
+
   const index = useMemo(() => db.buildIndex(entries), [entries]);
 
   const entryFor = useCallback(
@@ -144,37 +168,45 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const setEntry = useCallback(
-    async (e: Entry) => {
+    (e: Entry): Promise<void> => {
       const clean: Entry = { ...e, value: Math.max(0, Math.round(e.value * 100) / 100) };
       if (!clean.note?.trim()) delete clean.note;
-      setEntries((prev) => {
-        const rest = prev.filter((x) => !(x.habitId === e.habitId && x.date === e.date));
-        return db.isEmptyEntry(clean) ? rest : [...rest, clean];
-      });
-      await db.putEntry(clean);
+      const rest = entriesRef.current.filter((x) => !(x.habitId === e.habitId && x.date === e.date));
+      entriesRef.current = db.isEmptyEntry(clean) ? rest : [...rest, clean];
+      setEntries(entriesRef.current);
       scheduleSync();
+      return persist(db.putEntry(clean));
     },
-    [scheduleSync],
+    [scheduleSync, persist],
+  );
+
+  const updateEntry = useCallback(
+    (habitId: string, date: string, fn: (e: Entry) => Entry): Promise<void> => {
+      const current = entriesRef.current.find((x) => x.habitId === habitId && x.date === date) ?? emptyEntry(habitId, date);
+      return setEntry(fn(current));
+    },
+    [setEntry],
   );
 
   const saveHabit = useCallback(
     async (h: Habit) => {
       setHabits((prev) => upsert(prev, h));
-      await db.saveHabit(h);
       scheduleSync();
+      return persist(db.saveHabit(h));
     },
-    [scheduleSync],
+    [scheduleSync, persist],
   );
 
   const removeHabit = useCallback(
     async (id: string) => {
       setHabits((prev) => prev.filter((h) => h.id !== id));
-      setEntries((prev) => prev.filter((e) => e.habitId !== id));
+      entriesRef.current = entriesRef.current.filter((e) => e.habitId !== id);
+      setEntries(entriesRef.current);
       setGoals((prev) => prev.filter((g) => g.habitId !== id));
-      await db.deleteHabit(id);
       scheduleSync();
+      return persist(db.deleteHabit(id));
     },
-    [scheduleSync],
+    [scheduleSync, persist],
   );
 
   const reorderHabits = useCallback(
@@ -183,10 +215,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .map((h) => ({ ...h, sortOrder: ids.indexOf(h.id) === -1 ? ids.length + h.sortOrder : ids.indexOf(h.id) }))
         .sort((a, b) => a.sortOrder - b.sortOrder);
       setHabits(updated);
-      for (const h of updated) await db.saveHabit(h);
       scheduleSync();
+      await Promise.all(updated.map((h) => persist(db.saveHabit(h))));
     },
-    [habits, scheduleSync],
+    [habits, scheduleSync, persist],
   );
 
   const updateSettings = useCallback(
@@ -196,54 +228,55 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       settingsRef.current = next;
       if (patch.weekStartDay !== undefined) setWeekStartDay(next.weekStartDay);
       setSettings(next);
-      await db.patchSettings(patch);
       if (patch.snoozeMinutes !== undefined) registerCategories(next.snoozeMinutes).catch(() => {});
-      scheduleSync();
+      // Only settings that change which reminders fire need a reminder refresh.
+      if (['quietEnabled', 'quietStart', 'quietEnd', 'weekStartDay'].some((k) => k in patch)) scheduleSync();
+      return persist(db.patchSettings(patch));
     },
-    [scheduleSync],
+    [scheduleSync, persist],
   );
 
-  const saveGoal = useCallback(async (g: Goal) => {
+  const saveGoal = useCallback((g: Goal) => {
     setGoals((prev) => upsert(prev, g));
-    await db.putDoc('goals', g);
-  }, []);
-  const removeGoal = useCallback(async (id: string) => {
+    return persist(db.putDoc('goals', g));
+  }, [persist]);
+  const removeGoal = useCallback((id: string) => {
     setGoals((prev) => prev.filter((g) => g.id !== id));
-    await db.deleteDoc('goals', id);
-  }, []);
+    return persist(db.deleteDoc('goals', id));
+  }, [persist]);
 
-  const saveExercise = useCallback(async (e: Exercise) => {
+  const saveExercise = useCallback((e: Exercise) => {
     setExercises((prev) => upsert(prev, e).sort((a, b) => a.name.localeCompare(b.name)));
-    await db.putDoc('exercises', e);
-  }, []);
+    return persist(db.putDoc('exercises', e));
+  }, [persist]);
 
-  const saveTemplate = useCallback(async (t: WorkoutTemplate) => {
+  const saveTemplate = useCallback((t: WorkoutTemplate) => {
     setTemplates((prev) => upsert(prev, t));
-    await db.putDoc('templates', t);
-  }, []);
-  const removeTemplate = useCallback(async (id: string) => {
+    return persist(db.putDoc('templates', t));
+  }, [persist]);
+  const removeTemplate = useCallback((id: string) => {
     setTemplates((prev) => prev.filter((t) => t.id !== id));
-    await db.deleteDoc('templates', id);
-  }, []);
+    return persist(db.deleteDoc('templates', id));
+  }, [persist]);
 
-  const saveWorkout = useCallback(async (w: Workout) => {
+  const saveWorkout = useCallback((w: Workout) => {
     setWorkouts((prev) => upsert(prev, w));
-    await db.putDoc('workouts', w);
-  }, []);
-  const removeWorkout = useCallback(async (id: string) => {
+    return persist(db.putDoc('workouts', w));
+  }, [persist]);
+  const removeWorkout = useCallback((id: string) => {
     setWorkouts((prev) => prev.filter((w) => w.id !== id));
     setSets((prev) => prev.filter((s) => s.workoutId !== id));
-    await db.deleteWorkout(id);
-  }, []);
+    return persist(db.deleteWorkout(id));
+  }, [persist]);
 
-  const saveSet = useCallback(async (s: WorkoutSet) => {
+  const saveSet = useCallback((s: WorkoutSet) => {
     setSets((prev) => upsert(prev, s));
-    await db.putSet(s);
-  }, []);
-  const removeSet = useCallback(async (id: string) => {
+    return persist(db.putSet(s));
+  }, [persist]);
+  const removeSet = useCallback((id: string) => {
     setSets((prev) => prev.filter((s) => s.id !== id));
-    await db.deleteSet(id);
-  }, []);
+    return persist(db.deleteSet(id));
+  }, [persist]);
 
   const restore = useCallback(
     async (b: Backup) => {
@@ -285,6 +318,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     today,
     entryFor,
     setEntry,
+    updateEntry,
     saveHabit,
     removeHabit,
     reorderHabits,

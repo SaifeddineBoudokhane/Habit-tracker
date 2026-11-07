@@ -17,6 +17,18 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
   return dbPromise;
 }
 
+/**
+ * All writes go through this queue, one after another. SQLite transactions on one connection can't
+ * overlap ("cannot start a transaction within a transaction"), and ordering keeps quick successive
+ * edits (typing, rapid taps) from landing out of order.
+ */
+let writeChain: Promise<unknown> = Promise.resolve();
+export function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+  const run = writeChain.then(task, task);
+  writeChain = run.catch(() => undefined);
+  return run;
+}
+
 async function open() {
   const db = await SQLite.openDatabaseAsync('habits.db');
   await db.execAsync(`
@@ -82,7 +94,7 @@ export type WipeKind = 'history' | 'workouts' | 'everything';
  * - workouts: all workouts and sets (exercises and templates stay)
  * - everything: back to a fresh install (default exercises are re-added)
  */
-export async function wipe(kind: WipeKind): Promise<void> {
+async function wipeNow(kind: WipeKind): Promise<void> {
   const db = await getDb();
   await db.withExclusiveTransactionAsync(async (tx) => {
     if (kind === 'history' || kind === 'everything') await tx.runAsync('DELETE FROM entries');
@@ -104,27 +116,27 @@ async function listDocs<T>(db: SQLite.SQLiteDatabase, table: DocTable): Promise<
   return rows.map((r) => JSON.parse(r.data) as T);
 }
 
-export async function putDoc(table: DocTable, doc: { id: string }): Promise<void> {
+async function putDocNow(table: DocTable, doc: { id: string }): Promise<void> {
   const db = await getDb();
   await db.runAsync(`INSERT OR REPLACE INTO ${table} (id, data) VALUES (?, ?)`, doc.id, JSON.stringify(doc));
 }
 
-export async function deleteDoc(table: DocTable, id: string): Promise<void> {
+async function deleteDocNow(table: DocTable, id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync(`DELETE FROM ${table} WHERE id = ?`, id);
 }
 
-export async function putSet(s: WorkoutSet): Promise<void> {
+async function putSetNow(s: WorkoutSet): Promise<void> {
   const db = await getDb();
   await db.runAsync('INSERT OR REPLACE INTO sets (id, workout_id, data) VALUES (?, ?, ?)', s.id, s.workoutId, JSON.stringify(s));
 }
 
-export async function deleteSet(id: string): Promise<void> {
+async function deleteSetNow(id: string): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM sets WHERE id = ?', id);
 }
 
-export async function deleteWorkout(id: string): Promise<void> {
+async function deleteWorkoutNow(id: string): Promise<void> {
   const db = await getDb();
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM sets WHERE workout_id = ?', id);
@@ -169,7 +181,7 @@ export async function loadAll(): Promise<BackupData> {
   };
 }
 
-export async function saveHabit(h: Habit): Promise<void> {
+async function saveHabitNow(h: Habit): Promise<void> {
   const db = await getDb();
   await db.runAsync(
     'INSERT OR REPLACE INTO habits (id, data, sort_order) VALUES (?, ?, ?)',
@@ -179,7 +191,7 @@ export async function saveHabit(h: Habit): Promise<void> {
   );
 }
 
-export async function deleteHabit(id: string): Promise<void> {
+async function deleteHabitNow(id: string): Promise<void> {
   const db = await getDb();
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM entries WHERE habit_id = ?', id);
@@ -199,7 +211,7 @@ export function isEmptyEntry(e: Entry): boolean {
 }
 
 /** Writes the entry, or deletes it when it holds nothing. */
-export async function putEntry(e: Entry): Promise<void> {
+async function putEntryNow(e: Entry): Promise<void> {
   const db = await getDb();
   if (isEmptyEntry(e)) {
     await db.runAsync('DELETE FROM entries WHERE habit_id = ? AND date = ?', e.habitId, e.date);
@@ -216,7 +228,7 @@ export async function putEntry(e: Entry): Promise<void> {
 }
 
 /** Writes only the given keys, so concurrent writers (app, background tasks) don't overwrite each other. */
-export async function patchSettings(patch: Partial<Settings>): Promise<void> {
+async function patchSettingsNow(patch: Partial<Settings>): Promise<void> {
   const db = await getDb();
   await db.withTransactionAsync(async () => {
     for (const [k, v] of Object.entries(patch)) {
@@ -225,7 +237,7 @@ export async function patchSettings(patch: Partial<Settings>): Promise<void> {
   });
 }
 
-export async function saveSettings(s: Settings): Promise<void> {
+async function saveSettingsNow(s: Settings): Promise<void> {
   const db = await getDb();
   await db.withTransactionAsync(async () => {
     for (const [k, v] of Object.entries(s)) {
@@ -234,7 +246,7 @@ export async function saveSettings(s: Settings): Promise<void> {
   });
 }
 
-export async function replaceAll(data: BackupData): Promise<void> {
+async function replaceAllNow(data: BackupData): Promise<void> {
   const db = await getDb();
   await db.withExclusiveTransactionAsync(async (tx) => {
     for (const t of ['entries', 'habits', 'goals', 'exercises', 'templates', 'workouts', 'sets']) {
@@ -292,4 +304,52 @@ export async function claimOnce(key: string): Promise<boolean> {
   await db.runAsync('DELETE FROM handled WHERE at < ?', now - 7 * 86_400_000);
   const r = await db.runAsync('INSERT OR IGNORE INTO handled (key, at) VALUES (?, ?)', key, now);
   return r.changes === 1;
+}
+
+export function saveHabit(h: Habit): Promise<void> {
+  return enqueueWrite(() => saveHabitNow(h));
+}
+
+export function deleteHabit(id: string): Promise<void> {
+  return enqueueWrite(() => deleteHabitNow(id));
+}
+
+export function putEntry(e: Entry): Promise<void> {
+  return enqueueWrite(() => putEntryNow(e));
+}
+
+export function patchSettings(patch: Partial<Settings>): Promise<void> {
+  return enqueueWrite(() => patchSettingsNow(patch));
+}
+
+export function saveSettings(s: Settings): Promise<void> {
+  return enqueueWrite(() => saveSettingsNow(s));
+}
+
+export function replaceAll(data: BackupData): Promise<void> {
+  return enqueueWrite(() => replaceAllNow(data));
+}
+
+export function wipe(kind: WipeKind): Promise<void> {
+  return enqueueWrite(() => wipeNow(kind));
+}
+
+export function putDoc(table: DocTable, doc: { id: string }): Promise<void> {
+  return enqueueWrite(() => putDocNow(table, doc));
+}
+
+export function deleteDoc(table: DocTable, id: string): Promise<void> {
+  return enqueueWrite(() => deleteDocNow(table, id));
+}
+
+export function putSet(s: WorkoutSet): Promise<void> {
+  return enqueueWrite(() => putSetNow(s));
+}
+
+export function deleteSet(id: string): Promise<void> {
+  return enqueueWrite(() => deleteSetNow(id));
+}
+
+export function deleteWorkout(id: string): Promise<void> {
+  return enqueueWrite(() => deleteWorkoutNow(id));
 }

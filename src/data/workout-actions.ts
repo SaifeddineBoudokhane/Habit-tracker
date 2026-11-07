@@ -23,7 +23,7 @@ export function blankSet(workoutId: string, exerciseId: string, order: number, f
 
 export function useWorkoutActions() {
   const store = useStore();
-  const { exercises, workouts, sets, saveWorkout, saveSet, removeSet, settings, habits, entryFor, setEntry, today } = store;
+  const { exercises, workouts, sets, saveWorkout, saveSet, removeSet, settings, habits, updateEntry, today } = store;
 
   /** Sets for an exercise added to a workout: same as last time, or empty ones. */
   const setsForExercise = useCallback(
@@ -37,8 +37,9 @@ export function useWorkoutActions() {
     [sets, workouts, exercises],
   );
 
+  /** Creates the workout and returns its id right away; saving continues in the background. */
   const startWorkout = useCallback(
-    async (template?: WorkoutTemplate): Promise<string> => {
+    (template?: WorkoutTemplate): string => {
       const w: Workout = {
         id: newId(),
         date: today,
@@ -48,12 +49,12 @@ export function useWorkoutActions() {
         startedAt: Date.now(),
         finishedAt: null,
       };
-      await saveWorkout(w);
+      saveWorkout(w);
       let order = 0;
       for (const exId of template?.exerciseIds ?? []) {
         const list = setsForExercise(w, exId, order);
         order += list.length;
-        for (const s of list) await saveSet(s);
+        for (const s of list) saveSet(s);
       }
       return w.id;
     },
@@ -62,25 +63,24 @@ export function useWorkoutActions() {
 
   /** Ends the workout: drops empty sets and ticks the linked habit. Returns the habit name ticked, if any. */
   const finishWorkout = useCallback(
-    async (w: Workout): Promise<string | null> => {
+    (w: Workout): string | null => {
       restTimer.stop();
       const finishedAt = Date.now();
-      for (const s of sets.filter((x) => x.workoutId === w.id && !isFilled(x))) await removeSet(s.id);
-      await saveWorkout({ ...w, finishedAt });
+      for (const s of sets.filter((x) => x.workoutId === w.id && !isFilled(x))) removeSet(s.id);
+      saveWorkout({ ...w, finishedAt });
       const habit = habits.find((h) => h.id === settings.workoutHabitId && !h.archived);
       if (!habit) return null;
-      const e = entryFor(habit.id, w.date);
-      if (habit.kind === 'duration') {
-        const minutes = Math.max(1, Math.round((finishedAt - w.startedAt) / 60_000));
-        await setEntry({ ...e, skipped: false, value: e.value + minutes });
-      } else if (habit.kind === 'count') {
-        await setEntry(plusOne(habit, e));
-      } else if (habit.kind === 'check') {
-        await setEntry(markDone(habit, e));
-      }
-      return habit.name;
+      const minutes = Math.max(1, Math.round((finishedAt - w.startedAt) / 60_000));
+      updateEntry(habit.id, w.date, (e) =>
+        habit.kind === 'duration'
+          ? { ...e, skipped: false, value: e.value + minutes }
+          : habit.kind === 'count'
+            ? plusOne(habit, e)
+            : markDone(habit, e),
+      );
+      return habit.kind === 'avoid' ? null : habit.name;
     },
-    [sets, removeSet, saveWorkout, habits, settings.workoutHabitId, entryFor, setEntry],
+    [sets, removeSet, saveWorkout, habits, settings.workoutHabitId, updateEntry],
   );
 
   return { startWorkout, finishWorkout, setsForExercise };

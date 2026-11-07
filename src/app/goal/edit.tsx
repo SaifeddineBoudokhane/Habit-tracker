@@ -46,14 +46,14 @@ export default function GoalEditScreen() {
   if (!habit) return null;
   const unit = metric === 'value' ? habit.unit || (habit.kind === 'duration' ? 'minutes' : 'total') : habit.kind === 'avoid' ? 'clean days' : 'days done';
 
-  const save = async () => {
+  const save = () => {
     if (range[1] < range[0]) return Alert.alert('Check dates', 'The end date is before the start date.');
-    await saveGoal({ id: existing?.id ?? newId(), habitId: habit.id, metric, target, start: range[0], end: range[1] });
+    saveGoal({ id: existing?.id ?? newId(), habitId: habit.id, metric, target, start: range[0], end: range[1] });
     router.back();
   };
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content}>
+    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <Body muted>
         {habit.emoji} {habit.name}
       </Body>
@@ -104,8 +104,8 @@ export default function GoalEditScreen() {
         <Button
           title="Delete goal"
           kind="danger"
-          onPress={async () => {
-            await removeGoal(existing.id);
+          onPress={() => {
+            removeGoal(existing.id);
             router.back();
           }}
         />

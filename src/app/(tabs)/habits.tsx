@@ -35,7 +35,7 @@ export default function HabitsScreen() {
   const archived = habits.filter((h) => h.archived);
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.list}>
+    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.list} keyboardShouldPersistTaps="handled">
       {active.length === 0 && (
         <View style={{ alignItems: 'center', marginTop: 32, gap: 16 }}>
           <Body muted>No habits yet.</Body>

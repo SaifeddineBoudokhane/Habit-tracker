@@ -27,7 +27,7 @@ export default function TemplateScreen() {
   };
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content}>
+    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <Card>
         <Label>Name</Label>
         <Input value={t.name} onChangeText={(name) => saveTemplate({ ...t, name })} />
@@ -53,9 +53,9 @@ export default function TemplateScreen() {
       </Card>
       <Button
         title="Start this workout"
-        onPress={async () => {
+        onPress={() => {
           if (workouts.some((w) => w.finishedAt === null)) return Alert.alert('Workout in progress', 'Finish or discard the current workout first.');
-          const wid = await startWorkout(t);
+          const wid = startWorkout(t);
           router.replace({ pathname: '/workout/[id]', params: { id: wid } });
         }}
       />
@@ -68,9 +68,9 @@ export default function TemplateScreen() {
             {
               text: 'Delete',
               style: 'destructive',
-              onPress: async () => {
+              onPress: () => {
                 router.back();
-                await removeTemplate(t.id);
+                removeTemplate(t.id);
               },
             },
           ])

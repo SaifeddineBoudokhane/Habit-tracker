@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useColors } from '@/constants/theme';
 import { restTimer, useRestTimer } from '@/data/rest-timer';
@@ -8,6 +9,7 @@ import { formatDuration } from '@/lib/workouts';
 export function RestTimerBar() {
   const c = useColors();
   const { endsAt, total } = useRestTimer();
+  const insets = useSafeAreaInsets();
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -25,7 +27,7 @@ export function RestTimerBar() {
   const frac = total ? Math.min(1, left / total) : 0;
 
   return (
-    <View style={[s.bar, { backgroundColor: c.card, borderColor: c.border }]}>
+    <View style={[s.bar, { backgroundColor: c.card, borderColor: c.border, paddingBottom: 12 + insets.bottom }]}>
       <View style={[s.fill, { width: `${frac * 100}%`, backgroundColor: c.accent + '22' }]} />
       <Text style={[s.time, { color: c.text }]}>Rest {formatDuration(left)}</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>

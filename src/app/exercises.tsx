@@ -22,6 +22,7 @@ export default function ExercisesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
       <FlatList
+        keyboardShouldPersistTaps="handled"
         data={list}
         keyExtractor={(e) => e.id}
         ListHeaderComponent={<Button title="+ New exercise" kind="secondary" style={{ margin: 16 }} onPress={() => setAdding(true)} />}

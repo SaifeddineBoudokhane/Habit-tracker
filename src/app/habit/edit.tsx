@@ -100,7 +100,9 @@ export default function EditHabitScreen() {
       sortOrder: existing?.sortOrder ?? habits.length,
       startDate: existing?.startDate ?? today,
     };
-    await saveHabit(habit);
+    // Close straight away; the save finishes in the background.
+    saveHabit(habit);
+    router.back();
     if (reminders.length > 0) {
       const ok = await ensurePermission(true);
       if (!ok)
@@ -109,7 +111,6 @@ export default function EditHabitScreen() {
           'Reminders won’t show until you allow notifications for this app in Android settings.',
         );
     }
-    router.back();
   };
 
   const updateReminder = (rid: string, patch: Partial<Reminder>) =>
@@ -124,7 +125,7 @@ export default function EditHabitScreen() {
             <Input value={emoji} onChangeText={setEmoji} style={{ width: 56, textAlign: 'center', fontSize: 22 }} maxLength={4} />
             <Input value={name} onChangeText={setName} placeholder="e.g. Workout" style={{ flex: 1 }} autoFocus={!existing} />
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }} contentContainerStyle={{ gap: 6 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginTop: 12 }} contentContainerStyle={{ gap: 6 }}>
             {EMOJI_SUGGESTIONS.map((e) => (
               <Pressable key={e} onPress={() => setEmoji(e)} style={[s.emoji, { backgroundColor: emoji === e ? c.muted : 'transparent' }]}>
                 <Text style={{ fontSize: 22 }}>{e}</Text>

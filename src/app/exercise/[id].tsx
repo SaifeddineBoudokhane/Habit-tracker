@@ -31,7 +31,7 @@ export default function ExerciseScreen() {
     .slice(0, 20);
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content}>
+    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <Card style={{ gap: 6 }}>
         <Input value={exercise.name} onChangeText={(name) => saveExercise({ ...exercise, name })} />
         <Body muted>{KIND_LABEL[exercise.kind]}</Body>
@@ -74,8 +74,8 @@ export default function ExerciseScreen() {
       <Button
         title="Archive exercise"
         kind="secondary"
-        onPress={async () => {
-          await saveExercise({ ...exercise, archived: true });
+        onPress={() => {
+          saveExercise({ ...exercise, archived: true });
           router.back();
         }}
       />

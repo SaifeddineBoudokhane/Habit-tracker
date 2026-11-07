@@ -20,19 +20,19 @@ export default function WorkoutsScreen() {
   const history = workouts.filter((w) => w.finishedAt).sort((a, b) => b.startedAt - a.startedAt).slice(0, 50);
   const exName = new Map(exercises.map((e) => [e.id, e.name]));
 
-  const start = async (t?: WorkoutTemplate) => {
+  const start = (t?: WorkoutTemplate) => {
     if (activeWorkout) {
       return Alert.alert('Workout in progress', 'Finish or discard the current workout first.', [
         { text: 'OK', style: 'cancel' },
         { text: 'Open it', onPress: () => router.push({ pathname: '/workout/[id]', params: { id: activeWorkout.id } }) },
       ]);
     }
-    const id = await startWorkout(t);
+    const id = startWorkout(t);
     router.push({ pathname: '/workout/[id]', params: { id } });
   };
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content}>
+    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       {activeWorkout ? (
         <Pressable onPress={() => router.push({ pathname: '/workout/[id]', params: { id: activeWorkout.id } })}>
           <Card style={{ borderColor: c.accent, borderWidth: 1.5 }}>
@@ -72,9 +72,9 @@ export default function WorkoutsScreen() {
           title="+ New template"
           kind="secondary"
           style={{ marginTop: 10 }}
-          onPress={async () => {
+          onPress={() => {
             const id = newId();
-            await saveTemplate({ id, name: 'New template', exerciseIds: [] });
+            saveTemplate({ id, name: 'New template', exerciseIds: [] });
             router.push({ pathname: '/template/[id]', params: { id } });
           }}
         />

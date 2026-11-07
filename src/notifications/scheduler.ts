@@ -14,6 +14,8 @@ export const REFRESH_TASK = 'habit-reminder-refresh';
 export const ACTION_DONE = 'done';
 export const ACTION_PLUS1 = 'plus1';
 export const ACTION_SNOOZE = 'snooze';
+/** Days ahead to schedule. The background task tops this up a few times a day. */
+const PLAN_DAYS = 4;
 
 let setupDone = false;
 
@@ -117,28 +119,46 @@ export function syncReminders(): Promise<void> {
   return syncing;
 }
 
+/**
+ * Ids of the plan notifications currently scheduled with the OS. Read from the OS once per process
+ * (it may have changed while we weren't running), then kept up to date here, so later syncs only send
+ * the differences instead of re-reading everything. Android runs all Expo native calls on one queue,
+ * so keeping this work small keeps the rest of the app (database saves) responsive.
+ */
+let known: Set<string> | null = null;
+
 async function syncOnce() {
   const { habits, entries, settings } = await loadAll();
   const byId = new Map(habits.map((h) => [h.id, h]));
-  const plan = planNotifications(habits, buildIndex(entries), settings, new Date());
-  const wanted = new Map(plan.map((p) => [p.id, p]));
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  const existing = new Set<string>();
-  for (const n of scheduled) {
-    const id = n.identifier;
-    if (!id.startsWith(PLAN_PREFIX)) continue;
-    if (wanted.has(id)) existing.add(id);
-    else await Notifications.cancelScheduledNotificationAsync(id);
+  const plan = planNotifications(habits, buildIndex(entries), settings, new Date(), PLAN_DAYS);
+  const wanted = new Set(plan.map((p) => p.id));
+  if (known === null) {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    known = new Set(scheduled.map((n) => n.identifier).filter((id) => id.startsWith(PLAN_PREFIX)));
+  }
+  const now = Date.now();
+  for (const id of [...known]) {
+    if (wanted.has(id)) continue;
+    // Past ones have already fired and are gone from the OS.
+    const at = Number(id.split(':').pop());
+    if (!(at < now)) await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+    known.delete(id);
   }
   for (const p of plan) {
-    if (existing.has(p.id)) continue;
+    if (known.has(p.id)) continue;
     const habit = byId.get(p.habitId)!;
     await Notifications.scheduleNotificationAsync({
       identifier: p.id,
       content: contentFor(habit, p.date),
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: p.at, channelId: CHANNEL_ID },
     });
+    known.add(p.id);
   }
+}
+
+/** Forget what we think is scheduled and re-read it from the OS on the next sync. */
+export function resetKnownSchedule() {
+  known = null;
 }
 
 /** Apply a notification button press (Done / +1 / Snooze). Returns true if data changed. */

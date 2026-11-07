@@ -32,9 +32,9 @@ export function ExercisePicker({
   const list = exercises.filter((e) => !e.archived && e.name.toLowerCase().includes(q));
   const exact = exercises.some((e) => e.name.toLowerCase() === q);
 
-  const create = async () => {
+  const create = () => {
     const e: Exercise = { id: newId(), name: query.trim(), kind: newKind };
-    await saveExercise(e);
+    saveExercise(e);
     setQuery('');
     onPick(e);
   };

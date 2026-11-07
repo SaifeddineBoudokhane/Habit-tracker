@@ -12,7 +12,7 @@ export interface PlannedNotification {
 
 export const PLAN_PREFIX = 'plan:';
 /** Android allows ~500 pending alarms per app; stay well below it. */
-export const MAX_PLANNED = 400;
+export const MAX_PLANNED = 250;
 
 export function inQuietHours(minutes: number, settings: Settings): boolean {
   if (!settings.quietEnabled) return false;

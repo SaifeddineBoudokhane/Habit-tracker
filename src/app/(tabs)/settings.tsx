@@ -18,7 +18,7 @@ import { entriesToCsv, makeBackup, parseBackup, workoutsToCsv } from '@/lib/back
 import { toKey } from '@/lib/dates';
 import { DEFAULT_SETTINGS } from '@/lib/types';
 import { PLAN_PREFIX } from '@/lib/reminders';
-import { CHANNEL_ID, ensurePermission, syncReminders } from '@/notifications/scheduler';
+import { CHANNEL_ID, ensurePermission, resetKnownSchedule, syncReminders } from '@/notifications/scheduler';
 
 export default function SettingsScreen() {
   const c = useColors();
@@ -165,7 +165,7 @@ export default function SettingsScreen() {
   const backupStale = daysSinceBackup === null || daysSinceBackup > 30;
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content}>
+    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <Card>
         <Label>Notifications</Label>
         {permission === false ? (
@@ -199,7 +199,14 @@ export default function SettingsScreen() {
         )}
         <View style={[s.inline, { marginTop: 14 }]}>
           <Button title="Send test" kind="secondary" onPress={testNotification} />
-          <Button title="Reschedule all" kind="secondary" onPress={() => syncReminders().then(refresh)} />
+          <Button
+            title="Reschedule all"
+            kind="secondary"
+            onPress={() => {
+              resetKnownSchedule();
+              return syncReminders().then(refresh);
+            }}
+          />
         </View>
       </Card>
 

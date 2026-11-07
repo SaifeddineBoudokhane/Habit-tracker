@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useColors } from '@/constants/theme';
@@ -23,6 +24,7 @@ function Sheet({ habit, date, onClose }: { habit: Habit; date: string; onClose: 
   const { entryFor, setEntry, index, settings, today } = useStore();
   const [draft, setDraft] = useState<Entry>(() => entryFor(habit.id, date));
   const [inputKey, setInputKey] = useState(0);
+  const insets = useSafeAreaInsets();
   const timer = useHabitTimer(habit.id);
   const now = useTicker(timer.startedAt !== null);
 
@@ -37,8 +39,8 @@ function Sheet({ habit, date, onClose }: { habit: Habit; date: string; onClose: 
     setDraft({ ...draft, value: Math.max(0, v), skipped: false });
     setInputKey((k) => k + 1);
   };
-  const save = async (e: Entry) => {
-    await setEntry(e);
+  const save = (e: Entry) => {
+    setEntry(e);
     onClose();
   };
 
@@ -46,7 +48,7 @@ function Sheet({ habit, date, onClose }: { habit: Habit; date: string; onClose: 
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Pressable style={sheet.backdrop} onPress={onClose} />
-      <ScrollView style={[sheet.panel, { backgroundColor: c.card }]} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 36 }}>
+      <ScrollView style={[sheet.panel, { backgroundColor: c.card }]} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}>
         <Text style={[sheet.title, { color: c.text }]}>
           {habit.emoji} {habit.name}
         </Text>
@@ -62,11 +64,17 @@ function Sheet({ habit, date, onClose }: { habit: Habit; date: string; onClose: 
         {habit.kind === 'duration' && (
           <View style={{ marginBottom: 12 }}>
             {timer.startedAt === null ? (
-              <Button title="▶ Start timer" kind="secondary" onPress={() => timer.start().then(onClose)} />
+              <Button title="▶ Start timer" kind="secondary" onPress={() => {
+                timer.start();
+                onClose();
+              }} />
             ) : (
               <Button
                 title={`■ Stop timer · ${formatDuration((now - timer.startedAt) / 1000)}`}
-                onPress={() => timer.stop().then(onClose)}
+                onPress={() => {
+                  timer.stop();
+                  onClose();
+                }}
               />
             )}
           </View>

@@ -31,6 +31,7 @@ export function HabitWidgetConfiguration({ widgetInfo, renderWidget, setResult }
         <Text style={{ color: c.textSecondary, padding: 16 }}>Create a habit in the app first, then add the widget.</Text>
       )}
       <FlatList
+        keyboardShouldPersistTaps="handled"
         data={habits ?? []}
         keyExtractor={(h) => h.id}
         renderItem={({ item }) => (

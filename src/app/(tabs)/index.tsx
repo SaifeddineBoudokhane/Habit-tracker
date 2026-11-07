@@ -73,7 +73,7 @@ export default function TodayScreen() {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={s.list}>
+      <ScrollView contentContainerStyle={s.list} keyboardShouldPersistTaps="handled">
         {due.length === 0 && <Body muted style={{ textAlign: 'center', marginTop: 24 }}>Nothing due {offset === 0 ? 'today' : 'this day'} 🎉</Body>}
         {sections.map(({ key, label, items }) => (
           <View key={key} style={{ gap: 10 }}>

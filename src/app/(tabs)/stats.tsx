@@ -46,7 +46,7 @@ export default function StatsScreen() {
   const monthVolume = thisMonth.reduce((a, w) => a + summarize(w, sets).volume, 0);
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content}>
+    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <Card>
         <Label>Overall completion</Label>
         <View style={s.three}>

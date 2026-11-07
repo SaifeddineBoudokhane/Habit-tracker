@@ -46,13 +46,13 @@ export default function WorkoutScreen() {
 
   const update = (patch: Partial<Workout>) => saveWorkout({ ...workout, ...patch });
 
-  const addExercise = async (e: Exercise) => {
+  const addExercise = (e: Exercise) => {
     setPicking(false);
-    for (const s of setsForExercise(workout, e.id, nextOrder)) await saveSet(s);
+    for (const s of setsForExercise(workout, e.id, nextOrder)) saveSet(s);
   };
 
-  const finish = async () => {
-    const ticked = await finishWorkout(workout);
+  const finish = () => {
+    const ticked = finishWorkout(workout);
     const exIds = exerciseOrder.filter((eid) => sets.some((s) => s.workoutId === workout.id && s.exerciseId === eid && (s.reps || s.distance || s.durationSec)));
     const template = templates.find((t) => t.id === workout.templateId);
     const changed = template && template.exerciseIds.join() !== exIds.join();
@@ -62,10 +62,10 @@ export default function WorkoutScreen() {
         { text: 'No thanks', style: 'cancel', onPress: () => router.back() },
         {
           text: template ? 'Update template' : 'Save template',
-          onPress: async () => {
+          onPress: () => {
             const t = template ? { ...template, exerciseIds: exIds } : { id: newId(), name: workout.name, exerciseIds: exIds };
-            await saveTemplate(t);
-            if (!template) await saveWorkout({ ...workout, finishedAt: Date.now(), templateId: t.id });
+            saveTemplate(t);
+            if (!template) saveWorkout({ ...workout, finishedAt: Date.now(), templateId: t.id });
             router.back();
           },
         },
@@ -81,10 +81,10 @@ export default function WorkoutScreen() {
       {
         text: active ? 'Discard' : 'Delete',
         style: 'destructive',
-        onPress: async () => {
+        onPress: () => {
           if (active) restTimer.stop();
           router.back();
-          await removeWorkout(workout.id);
+          removeWorkout(workout.id);
         },
       },
     ]);

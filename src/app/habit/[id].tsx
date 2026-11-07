@@ -57,15 +57,15 @@ export default function HabitDetailScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: async () => {
+        onPress: () => {
           router.back();
-          await removeHabit(habit.id);
+          removeHabit(habit.id);
         },
       },
     ]);
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content}>
+    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <View style={s.stats}>
         <Stat label={habit.kind === 'avoid' ? 'Days clean' : `Streak (${unit})`} value={String(st.current)} />
         <Stat label={`Best (${unit})`} value={String(st.best)} />

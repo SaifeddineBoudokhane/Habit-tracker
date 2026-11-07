@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
 
 import { useColors } from '@/constants/theme';
 
@@ -26,25 +26,37 @@ export function Button({
   style,
 }: {
   title: string;
-  onPress: () => void;
+  /** May return a promise: the button then shows a spinner and ignores taps until it settles. */
+  onPress: () => void | Promise<unknown>;
   kind?: 'primary' | 'secondary' | 'danger';
   disabled?: boolean;
   style?: ViewStyle;
 }) {
   const c = useColors();
+  const [busy, setBusy] = useState(false);
   const bg = kind === 'primary' ? c.accent : kind === 'danger' ? 'transparent' : c.muted;
   const fg = kind === 'primary' ? c.accentText : kind === 'danger' ? c.danger : c.text;
+  const handlePress = () => {
+    if (busy) return;
+    const result = onPress();
+    if (result && typeof (result as Promise<unknown>).then === 'function') {
+      setBusy(true);
+      (result as Promise<unknown>).catch((e) => console.warn(e)).finally(() => setBusy(false));
+    }
+  };
   return (
     <Pressable
-      onPress={onPress}
-      disabled={disabled}
+      onPress={handlePress}
+      disabled={disabled || busy}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled, busy }}
       style={({ pressed }) => [
         styles.button,
         { backgroundColor: bg, opacity: disabled ? 0.4 : pressed ? 0.75 : 1 },
         kind === 'danger' && { borderWidth: 1, borderColor: c.danger },
         style,
       ]}>
-      <Text style={[styles.buttonText, { color: fg }]}>{title}</Text>
+      {busy ? <ActivityIndicator color={fg} /> : <Text style={[styles.buttonText, { color: fg }]}>{title}</Text>}
     </Pressable>
   );
 }
