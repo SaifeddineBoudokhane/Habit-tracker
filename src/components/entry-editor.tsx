@@ -139,9 +139,6 @@ function Sheet({ habit, date, onClose }: { habit: Habit; date: string; onClose: 
             />
           )}
           {numeric && <Button title="Save" onPress={() => save(draft)} />}
-          {numeric && draft.value < habit.target && (
-            <Button title="Set to goal" kind="secondary" onPress={() => save({ ...draft, value: habit.target, skipped: false })} />
-          )}
           {habit.kind !== 'avoid' &&
             (original.skipped ? (
               <Button title="Un-skip this day" kind="secondary" onPress={() => save({ ...draft, skipped: false })} />

@@ -69,9 +69,9 @@ export default function StatsScreen() {
         <Label>Habits</Label>
         <View style={[s.row, { borderBottomWidth: 0 }]}>
           <Text style={[s.name, { color: c.textSecondary, fontSize: 12 }]}>Habit</Text>
-          <Text style={[s.num, { color: c.textSecondary, fontSize: 12 }]}>7 days</Text>
-          <Text style={[s.num, { color: c.textSecondary, fontSize: 12 }]}>30 days</Text>
-          <Text style={[s.num, { color: c.textSecondary, fontSize: 12 }]}>Streak</Text>
+          <Text style={[s.num, { color: c.textSecondary, fontSize: 12 }]} numberOfLines={1}>7d</Text>
+          <Text style={[s.num, { color: c.textSecondary, fontSize: 12 }]} numberOfLines={1}>30d</Text>
+          <Text style={[s.num, { color: c.textSecondary, fontSize: 12 }]} numberOfLines={1}>🔥</Text>
         </View>
         {rows.map(({ habit, d7, d30, streak }) => (
           <Pressable
@@ -96,7 +96,7 @@ export default function StatsScreen() {
         <View style={s.three}>
           <Big value={String(thisWeek.length)} label="This week" />
           <Big value={String(thisMonth.length)} label="This month" />
-          <Big value={monthVolume >= 1000 ? `${(monthVolume / 1000).toFixed(1)}t` : `${Math.round(monthVolume)}kg`} label="Volume (month)" />
+          <Big value={monthVolume >= 1000 ? `${(monthVolume / 1000).toFixed(1)}t` : `${Math.round(monthVolume)}kg`} label="Volume" />
         </View>
       </Card>
     </ScrollView>
@@ -118,5 +118,5 @@ const s = StyleSheet.create({
   three: { flexDirection: 'row', justifyContent: 'space-between' },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   name: { flex: 1, fontSize: 15 },
-  num: { width: 58, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  num: { width: 54, textAlign: 'right', fontSize: 14, fontVariant: ['tabular-nums'] },
 });

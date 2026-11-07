@@ -60,4 +60,34 @@ export const HABIT_COLORS = [
 
 export const isHexColor = (c: string) => /^#[0-9a-f]{6}$/i.test(c);
 
+/** Best-guess emoji for a habit name (used until you pick one yourself). */
+const EMOJI_RULES: [RegExp, string][] = [
+  [/water|drink|hydrat/i, '💧'],
+  [/read|book/i, '📖'],
+  [/run|jog/i, '🏃'],
+  [/walk|steps/i, '🚶'],
+  [/gym|workout|lift|push.?up|pull.?up|squat|train|exercise/i, '💪'],
+  [/meditat|breath|mindful/i, '🧘'],
+  [/sleep|bed/i, '😴'],
+  [/teeth|floss/i, '🦷'],
+  [/vitamin|pill|medic/i, '💊'],
+  [/smok|cigar/i, '🚭'],
+  [/sugar|sweet|candy/i, '🍬'],
+  [/phone|social|scroll|screen/i, '📵'],
+  [/write|journal/i, '✍️'],
+  [/guitar|piano|music|practice/i, '🎸'],
+  [/clean|tidy/i, '🧹'],
+  [/eat|veg|fruit|diet|salad/i, '🥗'],
+  [/bike|cycl/i, '🚴'],
+  [/swim/i, '🏊'],
+  [/stretch|yoga/i, '🤸'],
+  [/study|learn|course/i, '🎓'],
+  [/pray/i, '🤲'],
+];
+
+export function guessEmoji(name: string): string | null {
+  for (const [re, e] of EMOJI_RULES) if (re.test(name)) return e;
+  return null;
+}
+
 export const EMOJI_SUGGESTIONS = ['💪', '🏃', '💧', '📖', '🧘', '🥗', '😴', '🦷', '💊', '🚭', '🍬', '📵', '✍️', '🎸', '🧹', '🚶'];

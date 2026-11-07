@@ -20,7 +20,9 @@ done
 # takeScreenshot paths can resolve next to the flow files or the working dir: gather both.
 cp ../e2e/shots/*.png shots/ 2>/dev/null || true
 # Failure screenshots from Maestro's debug output.
-find . -path '*debug-*' -name '*.png' -exec sh -c 'cp "$1" "shots/fail-$(basename "$(dirname "$1")")-$(basename "$1")"' _ {} \; 2>/dev/null || true
+# Flow screenshots (takeScreenshot) keep their names; Maestro's own failure captures get a fail- prefix.
+find . -path '*debug-*' -path '*/shots/*' -name '*.png' -exec cp {} shots/ \; 2>/dev/null || true
+find . -path '*debug-*' -path '*/screenshots/*' -name '*.png' -exec sh -c 'cp "$1" "shots/fail-$(basename "$1")"' _ {} \; 2>/dev/null || true
 adb logcat -d -v time ReactNativeJS:V ReactNative:V AndroidRuntime:E '*:S' > logcat.txt || true
 cat summary.txt
 exit $status

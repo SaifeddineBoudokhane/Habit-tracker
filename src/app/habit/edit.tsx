@@ -6,12 +6,11 @@ import { FormScreen } from '@/components/form-screen';
 
 import { TimeField } from '@/components/time-field';
 import { Body, Button, Card, Chip, Input, Label, NumberInput, Segmented } from '@/components/ui';
-import { EMOJI_SUGGESTIONS, HABIT_COLORS, isHexColor, useColors } from '@/constants/theme';
+import { EMOJI_SUGGESTIONS, HABIT_COLORS, guessEmoji, isHexColor, useColors } from '@/constants/theme';
 import { newId, useStore } from '@/data/store';
 import { getWeekStartDay, weekdayShort } from '@/lib/dates';
 import type { Habit, HabitGroup, HabitKind, Reminder, Schedule, Weekday } from '@/lib/types';
 import { ensurePermission } from '@/notifications/scheduler';
-
 
 const KIND_OPTIONS: { value: HabitKind; label: string }[] = [
   { value: 'check', label: 'Yes / No' },
@@ -42,7 +41,6 @@ const GROUP_OPTIONS: { value: HabitGroup; label: string }[] = [
   { value: 'evening', label: 'Evening' },
 ];
 
-
 export default function EditHabitScreen() {
   const c = useColors();
   const nav = useNavigation();
@@ -51,9 +49,13 @@ export default function EditHabitScreen() {
   const existing = habits.find((h) => h.id === id);
 
   const [name, setName] = useState(existing?.name ?? '');
-  const [emoji, setEmoji] = useState(existing?.emoji ?? '💪');
+  const [emoji, setEmoji] = useState(existing?.emoji ?? '✅');
+  // Until you pick an emoji yourself, it follows the name (Water -> 💧).
+  const [emojiPicked, setEmojiPicked] = useState(!!existing);
   const [color, setColor] = useState(existing?.color ?? HABIT_COLORS[7]);
-  const [customColor, setCustomColor] = useState(existing && !HABIT_COLORS.includes(existing.color) ? existing.color : '');
+  const [customColor, setCustomColor] = useState(
+    existing && !HABIT_COLORS.includes(existing.color) ? existing.color : '',
+  );
   const [kind, setKind] = useState<HabitKind>(existing?.kind ?? 'check');
   const [target, setTarget] = useState(existing?.target ?? 8);
   const [unit, setUnit] = useState(existing?.unit ?? '');
@@ -122,197 +124,288 @@ export default function EditHabitScreen() {
 
   return (
     <FormScreen footer={<Button title={existing ? 'Save changes' : 'Create habit'} onPress={save} />}>
-        <Card>
-          <Label>Name</Label>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Input value={emoji} onChangeText={setEmoji} style={{ width: 56, textAlign: 'center', fontSize: 22 }} maxLength={4} />
-            <Input value={name} onChangeText={setName} placeholder="e.g. Workout" style={{ flex: 1 }} autoFocus={!existing} />
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginTop: 12 }} contentContainerStyle={{ gap: 6 }}>
-            {EMOJI_SUGGESTIONS.map((e) => (
-              <Pressable key={e} onPress={() => setEmoji(e)} style={[s.emoji, { backgroundColor: emoji === e ? c.muted : 'transparent' }]}>
-                <Text style={{ fontSize: 22 }}>{e}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </Card>
-
-        <Card>
-          <Label>Type</Label>
-          <Segmented options={KIND_OPTIONS} value={kind} onChange={setKind} />
-          <Body muted style={{ marginTop: 10 }}>{KIND_HELP[kind]}</Body>
-          {kind === 'count' && (
-            <View style={[s.inline, { marginTop: 12 }]}>
-              <Body>Daily goal</Body>
-              <NumberInput value={target} onChange={setTarget} />
-              <Input value={unit} onChangeText={setUnit} placeholder="unit (glasses)" style={{ flex: 1 }} />
-            </View>
-          )}
-          {(kind === 'count' || kind === 'duration') && (
-            <View style={[s.inline, { marginTop: 12 }]}>
-              <Body>Each tap adds</Body>
-              <NumberInput
-                key={kind}
-                value={step || (kind === 'duration' ? (target >= 30 ? 10 : 5) : 1)}
-                onChange={setStep}
-              />
-              <Body muted>{kind === 'duration' ? 'minutes' : unit || 'per tap'}</Body>
-            </View>
-          )}
-          {kind === 'duration' && (
-            <View style={[s.inline, { marginTop: 12 }]}>
-              <Body>Daily goal</Body>
-              <NumberInput value={target} onChange={setTarget} />
-              <Body>minutes</Body>
-            </View>
-          )}
-        </Card>
-
-        {kind !== 'avoid' && (
-          <Card>
-            <Label>Schedule</Label>
-            <Segmented options={SCHEDULE_OPTIONS} value={schedType} onChange={setSchedType} />
-            {schedType === 'weekdays' && (
-              <View style={[s.row, { marginTop: 12 }]}>
-                {Array.from({ length: 7 }, (_, i) => ((getWeekStartDay() + i) % 7) as Weekday).map((d) => (
-                  <Chip
-                    key={d}
-                    label={weekdayShort(d)}
-                    selected={days.includes(d)}
-                    onPress={() => setDays((ds) => (ds.includes(d) ? ds.filter((x) => x !== d) : [...ds, d]))}
-                  />
-                ))}
-              </View>
-            )}
-            {schedType === 'perWeek' && (
-              <View style={[s.inline, { marginTop: 12 }]}>
-                <NumberInput value={times} onChange={(n) => setTimes(Math.min(7, n))} />
-                <Body>times per week, any days</Body>
-              </View>
-            )}
-            {schedType === 'everyN' && (
-              <View style={[s.inline, { marginTop: 12 }]}>
-                <Body>Every</Body>
-                <NumberInput value={everyN} onChange={setEveryN} />
-                <Body>days</Body>
-              </View>
-            )}
-          </Card>
-        )}
-
-        <Card>
-          <Label>Color</Label>
-          <View style={[s.preview, { backgroundColor: c.muted }]}>
-            <View style={[s.previewIcon, { backgroundColor: color + '26' }]}>
-              <Text style={{ fontSize: 22 }}>{emoji || '✅'}</Text>
-            </View>
-            <Text style={{ color: c.text, fontSize: 16, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-              {name || 'Habit name'}
-            </Text>
-            <View style={[s.previewCheck, { backgroundColor: color, borderColor: color }]}>
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 18 }}>✓</Text>
-            </View>
-          </View>
-          <View style={[s.row, { marginTop: 12 }]}>
-            {HABIT_COLORS.map((col) => (
-              <Pressable
-                key={col}
-                onPress={() => {
-                  setColor(col);
-                  setCustomColor('');
-                }}
-                hitSlop={4}
-                style={[s.swatch, { backgroundColor: col, borderColor: color === col ? c.text : 'transparent' }]}>
-                {color === col && <Text style={s.swatchTick}>✓</Text>}
-              </Pressable>
-            ))}
-          </View>
-          <View style={[s.inline, { marginTop: 12 }]}>
-            <Body>Custom</Body>
-            <Input
-              value={customColor}
-              onChangeText={(t) => {
-                const v = (t.startsWith('#') ? t : `#${t}`).slice(0, 7);
-                setCustomColor(t ? v : '');
-                if (isHexColor(v)) setColor(v.toLowerCase());
+      <Card>
+        <Label>Name</Label>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Input
+            value={emoji}
+            onChangeText={(t) => {
+              setEmoji(t);
+              setEmojiPicked(true);
+            }}
+            style={{ width: 56, textAlign: 'center', fontSize: 22 }}
+            maxLength={4}
+          />
+          <Input
+            value={name}
+            onChangeText={(t) => {
+              setName(t);
+              if (!emojiPicked) setEmoji(guessEmoji(t) ?? '✅');
+            }}
+            placeholder="e.g. Workout"
+            style={{ flex: 1 }}
+            autoFocus={!existing}
+          />
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={{ marginTop: 12 }}
+          contentContainerStyle={{ gap: 6 }}>
+          {EMOJI_SUGGESTIONS.map((e) => (
+            <Pressable
+              key={e}
+              onPress={() => {
+                setEmoji(e);
+                setEmojiPicked(true);
               }}
-              placeholder="#ff8800"
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={7}
-              style={{ width: 120 }}
-            />
-            {customColor !== '' && !isHexColor(customColor) && <Body muted style={{ fontSize: 13 }}>Use #RRGGBB</Body>}
-          </View>
-        </Card>
-
-        <Card>
-          <Label>Time of day</Label>
-          <Segmented options={GROUP_OPTIONS} value={group} onChange={setGroup} />
-          <Body muted style={{ marginTop: 8, fontSize: 13 }}>Groups habits into sections on the Today screen.</Body>
-        </Card>
-
-        <Card>
-          <Label>Reminders</Label>
-          {reminders.length === 0 && <Body muted>No reminders.</Body>}
-          {reminders.map((r) => (
-            <View key={r.id} style={[s.reminder, { borderColor: c.border }]}>
-              {r.kind === 'fixed' ? (
-                <View style={s.inline}>
-                  <Body>At</Body>
-                  <TimeField value={r.time} onChange={(time) => updateReminder(r.id, { time })} />
-                </View>
-              ) : (
-                <View style={{ gap: 8, flex: 1 }}>
-                  <View style={s.inline}>
-                    <Body>Every</Body>
-                    <NumberInput value={r.everyMin} min={5} onChange={(everyMin) => updateReminder(r.id, { everyMin })} />
-                    <Body>min</Body>
-                  </View>
-                  <View style={s.inline}>
-                    <Body>from</Body>
-                    <TimeField value={r.start} onChange={(start) => updateReminder(r.id, { start })} />
-                    <Body>to</Body>
-                    <TimeField value={r.end} onChange={(end) => updateReminder(r.id, { end })} />
-                  </View>
-                </View>
-              )}
-              <Pressable onPress={() => setReminders((rs) => rs.filter((x) => x.id !== r.id))} hitSlop={10} style={{ padding: 6 }}>
-                <Text style={{ color: c.danger, fontSize: 18 }}>✕</Text>
-              </Pressable>
-            </View>
+              style={[s.emoji, { backgroundColor: emoji === e ? c.muted : 'transparent' }]}>
+              <Text style={{ fontSize: 22 }}>{e}</Text>
+            </Pressable>
           ))}
-          <View style={[s.row, { marginTop: 12 }]}>
-            <Button
-              title="+ At a time"
-              kind="secondary"
-              onPress={() => setReminders((rs) => [...rs, { id: newId(), kind: 'fixed', time: '08:00' }])}
-            />
-            <Button
-              title="+ Repeating"
-              kind="secondary"
-              onPress={() =>
-                setReminders((rs) => [...rs, { id: newId(), kind: 'interval', everyMin: 60, start: '09:00', end: '21:00' }])
-              }
-            />
+        </ScrollView>
+      </Card>
+
+      <Card>
+        <Label>Type</Label>
+        <Segmented options={KIND_OPTIONS} value={kind} onChange={setKind} />
+        <Body muted style={{ marginTop: 10 }}>
+          {KIND_HELP[kind]}
+        </Body>
+        {kind === 'count' && (
+          <View style={[s.inline, { marginTop: 12 }]}>
+            <Body>Daily goal</Body>
+            <NumberInput value={target} onChange={setTarget} />
+            <Input value={unit} onChangeText={setUnit} placeholder="unit (glasses)" style={{ flex: 1 }} />
           </View>
-          <Body muted style={{ marginTop: 10, fontSize: 13 }}>
-            Reminders stop for the day once the habit is done, and respect quiet hours (Settings).
-          </Body>
+        )}
+        {(kind === 'count' || kind === 'duration') && (
+          <View style={[s.inline, { marginTop: 12 }]}>
+            <Body>Each tap adds</Body>
+            <NumberInput
+              key={kind}
+              value={step || (kind === 'duration' ? (target >= 30 ? 10 : 5) : 1)}
+              onChange={setStep}
+            />
+            <Body muted>{kind === 'duration' ? 'minutes' : unit || 'per tap'}</Body>
+          </View>
+        )}
+        {kind === 'duration' && (
+          <View style={[s.inline, { marginTop: 12 }]}>
+            <Body>Daily goal</Body>
+            <NumberInput value={target} onChange={setTarget} />
+            <Body>minutes</Body>
+          </View>
+        )}
+      </Card>
+
+      {kind !== 'avoid' && (
+        <Card>
+          <Label>Schedule</Label>
+          <Segmented options={SCHEDULE_OPTIONS} value={schedType} onChange={setSchedType} />
+          {schedType === 'weekdays' && (
+            <View style={[s.row, { marginTop: 12 }]}>
+              {Array.from({ length: 7 }, (_, i) => ((getWeekStartDay() + i) % 7) as Weekday).map((d) => (
+                <Chip
+                  key={d}
+                  label={weekdayShort(d)}
+                  selected={days.includes(d)}
+                  onPress={() => setDays((ds) => (ds.includes(d) ? ds.filter((x) => x !== d) : [...ds, d]))}
+                />
+              ))}
+            </View>
+          )}
+          {schedType === 'perWeek' && (
+            <View style={[s.inline, { marginTop: 12 }]}>
+              <NumberInput value={times} onChange={(n) => setTimes(Math.min(7, n))} />
+              <Body>times per week, any days</Body>
+            </View>
+          )}
+          {schedType === 'everyN' && (
+            <View style={[s.inline, { marginTop: 12 }]}>
+              <Body>Every</Body>
+              <NumberInput value={everyN} onChange={setEveryN} />
+              <Body>days</Body>
+            </View>
+          )}
         </Card>
+      )}
+
+      <Card>
+        <Label>Color</Label>
+        <View style={[s.preview, { backgroundColor: c.muted }]}>
+          <View style={[s.previewIcon, { backgroundColor: color + '26' }]}>
+            <Text style={{ fontSize: 22 }}>{emoji || '✅'}</Text>
+          </View>
+          <Text style={{ color: c.text, fontSize: 16, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+            {name || 'Habit name'}
+          </Text>
+          <View style={[s.previewCheck, { backgroundColor: color, borderColor: color }]}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 18 }}>✓</Text>
+          </View>
+        </View>
+        <View style={[s.row, { marginTop: 12 }]}>
+          {HABIT_COLORS.map((col) => (
+            <Pressable
+              key={col}
+              onPress={() => {
+                setColor(col);
+                setCustomColor('');
+              }}
+              hitSlop={4}
+              style={[
+                s.swatch,
+                {
+                  backgroundColor: col,
+                  borderColor: color === col ? c.text : 'transparent',
+                },
+              ]}>
+              {color === col && <Text style={s.swatchTick}>✓</Text>}
+            </Pressable>
+          ))}
+        </View>
+        <View style={[s.inline, { marginTop: 12 }]}>
+          <Body>Custom</Body>
+          <Input
+            value={customColor}
+            onChangeText={(t) => {
+              const v = (t.startsWith('#') ? t : `#${t}`).slice(0, 7);
+              setCustomColor(t ? v : '');
+              if (isHexColor(v)) setColor(v.toLowerCase());
+            }}
+            placeholder="#ff8800"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={7}
+            style={{ width: 120 }}
+          />
+          {customColor !== '' && !isHexColor(customColor) && (
+            <Body muted style={{ fontSize: 13 }}>
+              Use #RRGGBB
+            </Body>
+          )}
+        </View>
+      </Card>
+
+      <Card>
+        <Label>Time of day</Label>
+        <Segmented options={GROUP_OPTIONS} value={group} onChange={setGroup} />
+        <Body muted style={{ marginTop: 8, fontSize: 13 }}>
+          Groups habits into sections on the Today screen.
+        </Body>
+      </Card>
+
+      <Card>
+        <Label>Reminders</Label>
+        {reminders.length === 0 && <Body muted>No reminders.</Body>}
+        {reminders.map((r) => (
+          <View key={r.id} style={[s.reminder, { borderColor: c.border }]}>
+            {r.kind === 'fixed' ? (
+              <View style={s.inline}>
+                <Body>At</Body>
+                <TimeField value={r.time} onChange={(time) => updateReminder(r.id, { time })} />
+              </View>
+            ) : (
+              <View style={{ gap: 8, flex: 1 }}>
+                <View style={s.inline}>
+                  <Body>Every</Body>
+                  <NumberInput value={r.everyMin} min={5} onChange={(everyMin) => updateReminder(r.id, { everyMin })} />
+                  <Body>min</Body>
+                </View>
+                <View style={s.inline}>
+                  <Body>from</Body>
+                  <TimeField value={r.start} onChange={(start) => updateReminder(r.id, { start })} />
+                  <Body>to</Body>
+                  <TimeField value={r.end} onChange={(end) => updateReminder(r.id, { end })} />
+                </View>
+              </View>
+            )}
+            <Pressable
+              onPress={() => setReminders((rs) => rs.filter((x) => x.id !== r.id))}
+              hitSlop={10}
+              style={{ padding: 6 }}>
+              <Text style={{ color: c.danger, fontSize: 18 }}>✕</Text>
+            </Pressable>
+          </View>
+        ))}
+        <View style={[s.row, { marginTop: 12 }]}>
+          <Button
+            title="+ At a time"
+            kind="secondary"
+            onPress={() => setReminders((rs) => [...rs, { id: newId(), kind: 'fixed', time: '08:00' }])}
+          />
+          <Button
+            title="+ Repeating"
+            kind="secondary"
+            onPress={() =>
+              setReminders((rs) => [
+                ...rs,
+                {
+                  id: newId(),
+                  kind: 'interval',
+                  everyMin: 60,
+                  start: '09:00',
+                  end: '21:00',
+                },
+              ])
+            }
+          />
+        </View>
+        <Body muted style={{ marginTop: 10, fontSize: 13 }}>
+          Reminders stop for the day once the habit is done, and respect quiet hours (Settings).
+        </Body>
+      </Card>
     </FormScreen>
   );
 }
 
 const s = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  inline: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  emoji: { width: 42, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
+  inline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  emoji: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swatch: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   swatchTick: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  preview: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 14 },
-  previewIcon: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  previewCheck: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  preview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    borderRadius: 14,
+  },
+  previewIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewCheck: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   reminder: {
     flexDirection: 'row',
     alignItems: 'center',
