@@ -15,7 +15,9 @@ appId: com.saifeddine.habittracker
     timeout: 3000
 - tapOn: "+ Add exercise"
 - takeScreenshot: shots/31-exercise-picker
-- tapOn: "Squat"
+- inputText: "Squat"
+- tapOn:
+    id: "exercise-Squat"
 - extendedWaitUntil:
     visible: "Squat"
     timeout: 3000

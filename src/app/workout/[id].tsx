@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { DateField } from '@/components/date-field';
 import { ExercisePicker } from '@/components/exercise-picker';
@@ -90,8 +91,8 @@ export default function WorkoutScreen() {
     ]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1, backgroundColor: c.background }}>
+      <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <Card style={{ gap: 10 }}>
           <Input value={workout.name} onChangeText={(name) => update({ name })} placeholder="Workout name" style={{ fontSize: 18, fontWeight: '700' }} />
           <View style={s.inline}>
@@ -141,10 +142,10 @@ export default function WorkoutScreen() {
         <Input value={workout.note} onChangeText={(note) => update({ note })} placeholder="Workout note (optional)" multiline />
         {active && <Button title="Finish workout" onPress={finish} />}
         <Button title={active ? 'Discard workout' : 'Delete workout'} kind="danger" onPress={discard} />
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <RestTimerBar />
       <ExercisePicker visible={picking} onPick={addExercise} onClose={() => setPicking(false)} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { DateField } from '@/components/date-field';
 import { Body, Button, Card, Label, NumberInput, Segmented } from '@/components/ui';
@@ -53,7 +54,7 @@ export default function GoalEditScreen() {
   };
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAwareScrollView bottomOffset={24} style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <Body muted>
         {habit.emoji} {habit.name}
       </Body>
@@ -110,7 +111,7 @@ export default function GoalEditScreen() {
           }}
         />
       )}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

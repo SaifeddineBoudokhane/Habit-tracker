@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { AppLock } from '@/components/app-lock';
 import { Colors } from '@/constants/theme';
@@ -27,6 +28,7 @@ export default function RootLayout() {
     colors: { ...base.colors, primary: c.accent, background: c.background, card: c.card, text: c.text, border: c.border },
   };
   return (
+    <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
     <ThemeProvider value={theme}>
       <StoreProvider>
         <HideSplashWhenReady />
@@ -46,5 +48,6 @@ export default function RootLayout() {
         <AppLock />
       </StoreProvider>
     </ThemeProvider>
+    </KeyboardProvider>
   );
 }

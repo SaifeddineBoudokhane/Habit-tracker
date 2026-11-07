@@ -11,9 +11,7 @@ appId: com.saifeddine.habittracker
 - tapOn: "e.g. Workout"
 - inputText: "Workout"
 - takeScreenshot: shots/02-new-habit-keyboard-open
-# Tap Create while the keyboard is still open, exactly once.
-- scrollUntilVisible:
-    element: "Create habit"
+# Tap Create while the keyboard is still open, exactly once (the button stays above the keyboard).
 - tapOn:
     text: "Create habit"
     retryTapIfNoChange: false

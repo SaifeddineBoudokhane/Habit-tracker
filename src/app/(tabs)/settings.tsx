@@ -5,7 +5,8 @@ import * as Notifications from 'expo-notifications';
 import * as Sharing from 'expo-sharing';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { canUseAppLock, confirmIdentity } from '@/components/app-lock';
 import { TimeField } from '@/components/time-field';
@@ -165,7 +166,7 @@ export default function SettingsScreen() {
   const backupStale = daysSinceBackup === null || daysSinceBackup > 30;
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAwareScrollView bottomOffset={24} style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       {Platform.OS === 'android' && (
         <Pressable onPress={() => router.push('/widgets')}>
           <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -364,7 +365,7 @@ export default function SettingsScreen() {
       <Body muted style={{ textAlign: 'center', fontSize: 12 }}>
         Habit Tracker {Constants.expoConfig?.version ?? ''} · fully offline
       </Body>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

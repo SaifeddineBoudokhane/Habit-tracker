@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { KIND_LABEL } from '@/components/exercise-picker';
 import { LineChart } from '@/components/line-chart';
@@ -31,7 +32,7 @@ export default function ExerciseScreen() {
     .slice(0, 20);
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAwareScrollView bottomOffset={24} style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <Card style={{ gap: 6 }}>
         <Input value={exercise.name} onChangeText={(name) => saveExercise({ ...exercise, name })} />
         <Body muted>{KIND_LABEL[exercise.kind]}</Body>
@@ -79,7 +80,7 @@ export default function ExerciseScreen() {
           router.back();
         }}
       />
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { ExercisePicker } from '@/components/exercise-picker';
 import { Body, Button, Card, Input, Label } from '@/components/ui';
@@ -27,7 +28,7 @@ export default function TemplateScreen() {
   };
 
   return (
-    <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAwareScrollView bottomOffset={24} style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <Card>
         <Label>Name</Label>
         <Input value={t.name} onChangeText={(name) => saveTemplate({ ...t, name })} />
@@ -84,7 +85,7 @@ export default function TemplateScreen() {
           if (!t.exerciseIds.includes(e.id)) saveTemplate({ ...t, exerciseIds: [...t.exerciseIds, e.id] });
         }}
       />
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

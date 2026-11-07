@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useColors } from '@/constants/theme';
 import { newId, useStore } from '@/data/store';
@@ -26,6 +26,7 @@ export function ExercisePicker({
 }) {
   const c = useColors();
   const { exercises, saveExercise } = useStore();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [newKind, setNewKind] = useState<ExerciseKind>('strength');
   const q = query.trim().toLowerCase();
@@ -40,8 +41,8 @@ export function ExercisePicker({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: c.background, paddingTop: insets.top, paddingBottom: insets.bottom }}>
         <View style={s.header}>
           <Input value={query} onChangeText={setQuery} placeholder="Search or create exercise" style={{ flex: 1 }} autoFocus />
           <Pressable onPress={onClose} hitSlop={10} style={{ padding: 8 }}>
@@ -69,13 +70,14 @@ export function ExercisePicker({
                 setQuery('');
                 onPick(item);
               }}
+              testID={`exercise-${item.name}`}
               style={[s.item, { borderColor: c.border }]}>
               <Text style={{ color: c.text, fontSize: 16 }}>{item.name}</Text>
               <Text style={{ color: c.textSecondary, fontSize: 12 }}>{KIND_LABEL[item.kind]}</Text>
             </Pressable>
           )}
         />
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }

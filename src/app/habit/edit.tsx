@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { FormScreen } from '@/components/form-screen';
 
 import { TimeField } from '@/components/time-field';
 import { Body, Button, Card, Chip, Input, Label, NumberInput, Segmented } from '@/components/ui';
@@ -117,8 +119,7 @@ export default function EditHabitScreen() {
     setReminders((rs) => rs.map((r) => (r.id === rid ? ({ ...r, ...patch } as Reminder) : r)));
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <FormScreen footer={<Button title={existing ? 'Save changes' : 'Create habit'} onPress={save} />}>
         <Card>
           <Label>Name</Label>
           <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -132,52 +133,6 @@ export default function EditHabitScreen() {
               </Pressable>
             ))}
           </ScrollView>
-        </Card>
-
-        <Card>
-          <Label>Color</Label>
-          <View style={[s.preview, { backgroundColor: c.muted }]}>
-            <View style={[s.previewIcon, { backgroundColor: color + '26' }]}>
-              <Text style={{ fontSize: 22 }}>{emoji || '✅'}</Text>
-            </View>
-            <Text style={{ color: c.text, fontSize: 16, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-              {name || 'Habit name'}
-            </Text>
-            <View style={[s.previewCheck, { backgroundColor: color, borderColor: color }]}>
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 18 }}>✓</Text>
-            </View>
-          </View>
-          <View style={[s.row, { marginTop: 12 }]}>
-            {HABIT_COLORS.map((col) => (
-              <Pressable
-                key={col}
-                onPress={() => {
-                  setColor(col);
-                  setCustomColor('');
-                }}
-                hitSlop={4}
-                style={[s.swatch, { backgroundColor: col, borderColor: color === col ? c.text : 'transparent' }]}>
-                {color === col && <Text style={s.swatchTick}>✓</Text>}
-              </Pressable>
-            ))}
-          </View>
-          <View style={[s.inline, { marginTop: 12 }]}>
-            <Body>Custom</Body>
-            <Input
-              value={customColor}
-              onChangeText={(t) => {
-                const v = (t.startsWith('#') ? t : `#${t}`).slice(0, 7);
-                setCustomColor(t ? v : '');
-                if (isHexColor(v)) setColor(v.toLowerCase());
-              }}
-              placeholder="#ff8800"
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={7}
-              style={{ width: 120 }}
-            />
-            {customColor !== '' && !isHexColor(customColor) && <Body muted style={{ fontSize: 13 }}>Use #RRGGBB</Body>}
-          </View>
         </Card>
 
         <Card>
@@ -233,6 +188,52 @@ export default function EditHabitScreen() {
         )}
 
         <Card>
+          <Label>Color</Label>
+          <View style={[s.preview, { backgroundColor: c.muted }]}>
+            <View style={[s.previewIcon, { backgroundColor: color + '26' }]}>
+              <Text style={{ fontSize: 22 }}>{emoji || '✅'}</Text>
+            </View>
+            <Text style={{ color: c.text, fontSize: 16, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+              {name || 'Habit name'}
+            </Text>
+            <View style={[s.previewCheck, { backgroundColor: color, borderColor: color }]}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 18 }}>✓</Text>
+            </View>
+          </View>
+          <View style={[s.row, { marginTop: 12 }]}>
+            {HABIT_COLORS.map((col) => (
+              <Pressable
+                key={col}
+                onPress={() => {
+                  setColor(col);
+                  setCustomColor('');
+                }}
+                hitSlop={4}
+                style={[s.swatch, { backgroundColor: col, borderColor: color === col ? c.text : 'transparent' }]}>
+                {color === col && <Text style={s.swatchTick}>✓</Text>}
+              </Pressable>
+            ))}
+          </View>
+          <View style={[s.inline, { marginTop: 12 }]}>
+            <Body>Custom</Body>
+            <Input
+              value={customColor}
+              onChangeText={(t) => {
+                const v = (t.startsWith('#') ? t : `#${t}`).slice(0, 7);
+                setCustomColor(t ? v : '');
+                if (isHexColor(v)) setColor(v.toLowerCase());
+              }}
+              placeholder="#ff8800"
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={7}
+              style={{ width: 120 }}
+            />
+            {customColor !== '' && !isHexColor(customColor) && <Body muted style={{ fontSize: 13 }}>Use #RRGGBB</Body>}
+          </View>
+        </Card>
+
+        <Card>
           <Label>Time of day</Label>
           <Segmented options={GROUP_OPTIONS} value={group} onChange={setGroup} />
           <Body muted style={{ marginTop: 8, fontSize: 13 }}>Groups habits into sections on the Today screen.</Body>
@@ -286,15 +287,11 @@ export default function EditHabitScreen() {
             Reminders stop for the day once the habit is done, and respect quiet hours (Settings).
           </Body>
         </Card>
-
-        <Button title={existing ? 'Save changes' : 'Create habit'} onPress={save} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </FormScreen>
   );
 }
 
 const s = StyleSheet.create({
-  content: { padding: 16, gap: 14, paddingBottom: 48 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   emoji: { width: 42, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
