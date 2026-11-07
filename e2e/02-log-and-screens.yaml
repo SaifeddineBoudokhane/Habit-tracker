@@ -34,10 +34,21 @@ appId: com.saifeddine.habittracker
     visible: "3 / 8"
     timeout: 3000
 - takeScreenshot: shots/11-today-water-3
-# Entry editor sheet
+# Minus button
+- tapOn:
+    text: "−"
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: "2 / 8"
+    timeout: 3000
+# Type an exact number in the sheet (opens with the keyboard ready)
 - tapOn: "Water"
 - takeScreenshot: shots/12-entry-editor
-- tapOn: "Cancel"
+- inputText: "6"
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "6 / 8"
+    timeout: 3000
 # Habits tab and detail
 - tapOn: "Habits"
 - takeScreenshot: shots/13-habits-tab

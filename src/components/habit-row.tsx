@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useColors } from '@/constants/theme';
-import { tapped } from '@/data/actions';
+import { minusStep, stepOf, tapped } from '@/data/actions';
 import { useStore } from '@/data/store';
 import { useTicker } from '@/data/timers';
 import { formatDuration } from '@/lib/workouts';
@@ -61,7 +61,15 @@ export function HabitRow({ habit, date, onEdit }: { habit: Habit; date: string; 
           <Text style={{ color: c.textSecondary, fontSize: 13, marginTop: 2 }}>{parts.join(' · ')}</Text>
         )}
       </View>
-      <ActionButton habit={habit} value={value} done={done} skipped={!!entry?.skipped} onPress={onTap} />
+      <ActionButton
+        habit={habit}
+        value={value}
+        done={done}
+        skipped={!!entry?.skipped}
+        onPress={onTap}
+        onMinus={() => updateEntry(habit.id, date, (e) => minusStep(habit, e))}
+        onLongPress={onEdit}
+      />
     </Pressable>
   );
 }
@@ -72,12 +80,16 @@ function ActionButton({
   done,
   skipped,
   onPress,
+  onMinus,
+  onLongPress,
 }: {
   habit: Habit;
   value: number;
   done: boolean;
   skipped: boolean;
   onPress: () => void;
+  onMinus: () => void;
+  onLongPress: () => void;
 }) {
   const c = useColors();
   const hit = { top: 10, bottom: 10, left: 10, right: 10 };
@@ -113,13 +125,26 @@ function ActionButton({
     );
   }
 
-  const label = done ? '✓' : habit.kind === 'count' ? '+1' : `+${habit.target >= 30 ? 10 : 5}`;
+  const step = stepOf(habit);
   return (
-    <Pressable onPress={onPress} hitSlop={hit}>
-      <ProgressRing progress={value / habit.target} color={habit.color} track={c.muted} size={46} stroke={5}>
-        <Text style={{ color: done ? habit.color : c.text, fontWeight: '700', fontSize: done ? 18 : 13 }}>{label}</Text>
-      </ProgressRing>
-    </Pressable>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <Pressable
+        onPress={onMinus}
+        disabled={value <= 0}
+        hitSlop={{ top: 10, bottom: 10, left: 6, right: 4 }}
+        testID={`minus-${habit.id}`}
+        accessibilityLabel={`Minus ${step}`}
+        style={[row.minus, { borderColor: c.border, opacity: value <= 0 ? 0.35 : 1 }]}>
+        <Text style={{ color: c.text, fontSize: 18, fontWeight: '700', marginTop: -2 }}>−</Text>
+      </Pressable>
+      <Pressable onPress={onPress} onLongPress={onLongPress} hitSlop={hit} testID={`plus-${habit.id}`} accessibilityLabel={`Plus ${step}`}>
+        <ProgressRing progress={value / habit.target} color={habit.color} track={c.muted} size={48} stroke={5}>
+          <Text style={{ color: done ? habit.color : c.text, fontWeight: '700', fontSize: done ? 18 : step >= 100 ? 11 : 13 }}>
+            {done ? '✓' : `+${step}`}
+          </Text>
+        </ProgressRing>
+      </Pressable>
+    </View>
   );
 }
 
@@ -136,4 +161,5 @@ const row = StyleSheet.create({
   name: { fontSize: 16, fontWeight: '600' },
   check: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   slip: { borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12 },
+  minus: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
 });

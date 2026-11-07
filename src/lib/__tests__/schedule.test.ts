@@ -24,3 +24,14 @@ test('skipsInMonth', () => {
   const i = idx('h1', { '2026-10-30': 'skip', '2026-11-02': 'skip', '2026-11-03': 'skip', '2026-11-04': 1 });
   expect(skipsInMonth('h1', i, '2026-11-20')).toBe(2);
 });
+
+test('custom step for count habits', () => {
+  const { tapped, minusStep, stepOf } = jest.requireActual('../../data/actions') as typeof import('../../data/actions');
+  const h = habit({ kind: 'count', target: 100, step: 10 });
+  const e = { habitId: 'h1', date: '2026-11-02', value: 0, skipped: false };
+  expect(stepOf(h)).toBe(10);
+  expect(tapped(h, e).value).toBe(10);
+  expect(minusStep(h, { ...e, value: 5 }).value).toBe(0);
+  expect(stepOf(habit({ kind: 'count' }))).toBe(1);
+  expect(stepOf(habit({ kind: 'duration', target: 30 }))).toBe(10);
+});

@@ -4,7 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
 import { useColors } from '@/constants/theme';
-import { durationStep } from '@/data/actions';
+import { stepOf } from '@/data/actions';
 import { useStore } from '@/data/store';
 import { useHabitTimer, useTicker } from '@/data/timers';
 import { formatDuration } from '@/lib/workouts';
@@ -33,7 +33,11 @@ function Sheet({ habit, date, onClose }: { habit: Habit; date: string; onClose: 
   const usedSkips = skipsInMonth(habit.id, index, date) - (original.skipped ? 1 : 0);
   const canSkip = usedSkips < settings.skipsPerMonth;
   const numeric = habit.kind === 'count' || habit.kind === 'duration';
-  const step = habit.kind === 'duration' ? durationStep(habit) : 1;
+  const step = stepOf(habit);
+  const quick = [...new Set([step, 5, 10, 25, 50, 100])]
+    .filter((n) => n > 0 && n <= Math.max(habit.target, step) * 2)
+    .sort((a, b) => a - b)
+    .slice(0, 5);
   const unit = habit.kind === 'duration' ? 'min' : habit.unit;
 
   const setValue = (v: number) => {
@@ -56,11 +60,34 @@ function Sheet({ habit, date, onClose }: { habit: Habit; date: string; onClose: 
         <Body muted>{prettyDate(date, today)}</Body>
 
         {numeric && (
-          <View style={sheet.stepper}>
-            <Button title={`−${step}`} kind="secondary" onPress={() => setValue(draft.value - step)} />
-            <NumberInput key={inputKey} value={draft.value} min={0} onChange={(n) => setDraft({ ...draft, value: n, skipped: false })} />
-            <Button title={`+${step}`} kind="secondary" onPress={() => setValue(draft.value + step)} />
-          </View>
+          <>
+            <View style={sheet.stepper}>
+              <Button title={`−${step}`} kind="secondary" onPress={() => setValue(draft.value - step)} />
+              <NumberInput
+                key={inputKey}
+                value={draft.value}
+                min={0}
+                autoFocus={inputKey === 0}
+                selectTextOnFocus
+                returnKeyType="done"
+                onSubmitEditing={() => save(draft)}
+                testID="entry-value"
+                onChange={(n) => setDraft({ ...draft, value: n, skipped: false })}
+                style={{ width: 110, fontSize: 26, fontWeight: '700', paddingVertical: 8 }}
+              />
+              <Button title={`+${step}`} kind="secondary" onPress={() => setValue(draft.value + step)} />
+            </View>
+            <View style={sheet.quick}>
+              {quick.map((n) => (
+                <Pressable key={n} onPress={() => setValue(draft.value + n)} style={[sheet.chip, { backgroundColor: c.muted }]}>
+                  <Text style={{ color: c.text, fontWeight: '600' }}>+{n}</Text>
+                </Pressable>
+              ))}
+              <Pressable onPress={() => setValue(habit.target)} style={[sheet.chip, { backgroundColor: habit.color + '33' }]}>
+                <Text style={{ color: c.text, fontWeight: '600' }}>= {habit.target}</Text>
+              </Pressable>
+            </View>
+          </>
         )}
         {habit.kind === 'duration' && (
           <View style={{ marginBottom: 12 }}>
@@ -138,5 +165,7 @@ const sheet = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   panel: { padding: 20, flexGrow: 0, maxHeight: '85%', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   title: { fontSize: 20, fontWeight: '700', marginBottom: 2 },
-  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginVertical: 16 },
+  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16, marginBottom: 10 },
+  quick: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 12 },
+  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999 },
 });

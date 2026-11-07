@@ -26,6 +26,8 @@ export interface Habit {
   /** Daily target for count/duration habits (minutes for duration). 1 for check/avoid. */
   target: number;
   unit: string;
+  /** Amount one tap adds for count/duration habits (default 1 for counts, 5 or 10 minutes for durations). */
+  step?: number;
   schedule: Schedule;
   reminders: Reminder[];
   archived: boolean;

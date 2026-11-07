@@ -110,15 +110,17 @@ export function NumberInput({
   onChange,
   min = 1,
   style,
+  ...rest
 }: {
   value: number;
   onChange: (n: number) => void;
   min?: number;
   style?: object;
-}) {
+} & Omit<TextInputProps, 'value' | 'onChange' | 'style'>) {
   return (
     <Input
       keyboardType="number-pad"
+      {...rest}
       defaultValue={String(value)}
       onChangeText={(t) => {
         const n = parseInt(t.replace(/[^0-9]/g, ''), 10);

@@ -57,6 +57,7 @@ export default function EditHabitScreen() {
   const [kind, setKind] = useState<HabitKind>(existing?.kind ?? 'check');
   const [target, setTarget] = useState(existing?.target ?? 8);
   const [unit, setUnit] = useState(existing?.unit ?? '');
+  const [step, setStep] = useState(existing?.step ?? 0);
   const [schedType, setSchedType] = useState<ScheduleType>(existing?.schedule.type ?? 'daily');
   const [days, setDays] = useState<Weekday[]>(
     existing?.schedule.type === 'weekdays' ? existing.schedule.days : [1, 3, 5],
@@ -95,6 +96,7 @@ export default function EditHabitScreen() {
       kind,
       target: kind === 'count' || kind === 'duration' ? Math.max(1, target) : 1,
       unit: kind === 'count' ? unit.trim() : kind === 'duration' ? 'min' : '',
+      step: kind === 'count' || kind === 'duration' ? step || undefined : undefined,
       schedule: kind === 'avoid' ? { type: 'daily' } : schedule(),
       reminders,
       group,
@@ -144,6 +146,17 @@ export default function EditHabitScreen() {
               <Body>Daily goal</Body>
               <NumberInput value={target} onChange={setTarget} />
               <Input value={unit} onChangeText={setUnit} placeholder="unit (glasses)" style={{ flex: 1 }} />
+            </View>
+          )}
+          {(kind === 'count' || kind === 'duration') && (
+            <View style={[s.inline, { marginTop: 12 }]}>
+              <Body>Each tap adds</Body>
+              <NumberInput
+                key={kind}
+                value={step || (kind === 'duration' ? (target >= 30 ? 10 : 5) : 1)}
+                onChange={setStep}
+              />
+              <Body muted>{kind === 'duration' ? 'minutes' : unit || 'per tap'}</Body>
             </View>
           )}
           {kind === 'duration' && (
