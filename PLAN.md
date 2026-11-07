@@ -19,7 +19,7 @@ on a rolling window each time the app opens. Android has no such cap.
 
 ## Features
 
-### Phase 1 — core (MVP)
+### Phase 1 — core (MVP) ✅ built
 
 **Habits**
 - Create, edit, archive and delete a habit: name, icon/emoji, color.
@@ -113,6 +113,7 @@ drift out of sync.
 
 1. Code is written and committed in this cloud environment.
 2. Logic (streaks, schedules, stats) is covered by unit tests run here (Jest).
-3. Build an installable app with `eas build -p android --profile preview`. This
-   produces an APK download link that you install on your phone.
-4. Later updates can go over the air with `eas update`, no reinstall needed.
+3. Every push runs GitHub Actions (`.github/workflows/android.yml`): typecheck, tests,
+   lint, then a release APK published to GitHub Releases. Install link:
+   https://github.com/SaifeddineBoudokhane/Habit-tracker/releases/latest/download/habit-tracker.apk
+4. No Expo account or Android Studio needed. (EAS Build remains an option later.)

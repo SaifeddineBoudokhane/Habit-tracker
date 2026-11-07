@@ -1,0 +1,26 @@
+import { isDueOn, skipsInMonth } from '../schedule';
+import { habit, idx } from './helpers';
+
+test('per-week habit disappears from Today once the quota is met', () => {
+  const h = habit({ schedule: { type: 'perWeek', times: 2 }, startDate: '2026-11-02' });
+  const i = idx('h1', { '2026-11-02': 1, '2026-11-03': 1 });
+  expect(isDueOn(h, i, '2026-11-03')).toBe(true); // logged that day, keep showing
+  expect(isDueOn(h, i, '2026-11-04')).toBe(false);
+  expect(isDueOn(h, i, '2026-11-09')).toBe(true); // new week
+});
+
+test('weekday habit is only due on its days', () => {
+  const h = habit({ schedule: { type: 'weekdays', days: [1] } });
+  expect(isDueOn(h, new Map(), '2026-11-02')).toBe(true);
+  expect(isDueOn(h, new Map(), '2026-11-03')).toBe(false);
+});
+
+test('archived and not-yet-started habits are never due', () => {
+  expect(isDueOn(habit({ archived: true }), new Map(), '2026-11-02')).toBe(false);
+  expect(isDueOn(habit(), new Map(), '2026-10-31')).toBe(false);
+});
+
+test('skipsInMonth', () => {
+  const i = idx('h1', { '2026-10-30': 'skip', '2026-11-02': 'skip', '2026-11-03': 'skip', '2026-11-04': 1 });
+  expect(skipsInMonth('h1', i, '2026-11-20')).toBe(2);
+});
