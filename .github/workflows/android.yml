@@ -70,6 +70,11 @@ jobs:
             elif gh release create "$TAG" habit-tracker.apk --target "${{ github.sha }}" \
                 --title "Habit Tracker build ${{ github.run_number }}" --notes "$NOTES" --latest; then
               exit 0
+            # Tagging a commit that changes workflow files can be refused for the Actions token;
+            # fall back to tagging the branch head (the same commit unless a newer push landed).
+            elif gh release create "$TAG" habit-tracker.apk \
+                --title "Habit Tracker build ${{ github.run_number }}" --notes "$NOTES" --latest; then
+              exit 0
             fi
             echo "Attempt $attempt failed, retrying"; sleep $((attempt * 15))
           done
