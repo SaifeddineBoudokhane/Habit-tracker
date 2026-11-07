@@ -1,3 +1,7 @@
+"use no memo";
+// Widget components must stay plain functions: the React Compiler rewrites them into hook calls,
+// which react-native-android-widget cannot render ("Invalid Hook Call" -> "Error rendering widget").
+
 import {
   FlexWidget,
   ListWidget,

@@ -1,3 +1,7 @@
+"use no memo";
+// Widget components must stay plain functions: the React Compiler rewrites them into hook calls,
+// which react-native-android-widget cannot render ("Invalid Hook Call" -> "Error rendering widget").
+
 import type { WidgetInfo, WidgetTaskHandlerProps } from 'react-native-android-widget';
 import { getWidgetInfo, requestWidgetUpdateById } from 'react-native-android-widget';
 
@@ -90,4 +94,3 @@ export async function refreshWidgets(opts: { except?: WidgetInfo; data?: WidgetD
 
 /** Kept for callers that only know "something changed". */
 export const refreshWidget = () => refreshWidgets();
-

@@ -26,10 +26,13 @@ appId: com.saifeddine.habittracker
 - extendedWaitUntil:
     visible: "Habits today"
     timeout: 5000
+- assertNotVisible: ".*Error rendering widget.*"
 - takeScreenshot: shots/41-widgets-top
 - scroll
+- assertNotVisible: ".*Error rendering widget.*"
 - takeScreenshot: shots/42-widgets-middle
 - scroll
+- assertNotVisible: ".*Error rendering widget.*"
 - takeScreenshot: shots/43-widgets-bottom
 # Deep link a single-habit widget would open
 - openLink: "habittracker://widget-setup?widgetId=999"
