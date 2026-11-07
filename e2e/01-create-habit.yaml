@@ -1,0 +1,23 @@
+# The bug report: "Create habit" needed several taps. One tap must be enough.
+appId: com.saifeddine.habittracker
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Create your first habit"
+    timeout: 30000
+- takeScreenshot: shots/01-today-empty
+- tapOn: "Create your first habit"
+- tapOn: "e.g. Workout"
+- inputText: "Workout"
+- takeScreenshot: shots/02-new-habit-keyboard-open
+# Tap Create while the keyboard is still open, exactly once.
+- scrollUntilVisible:
+    element: "Create habit"
+- tapOn:
+    text: "Create habit"
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: "0 of 1 done"
+    timeout: 3000
+- takeScreenshot: shots/03-today-one-habit

@@ -1,0 +1,32 @@
+appId: com.saifeddine.habittracker
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Today"
+    timeout: 30000
+- tapOn: "Workouts"
+- takeScreenshot: shots/30-workouts-tab
+- tapOn:
+    text: "Start empty workout"
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: "+ Add exercise"
+    timeout: 3000
+- tapOn: "+ Add exercise"
+- takeScreenshot: shots/31-exercise-picker
+- tapOn: "Squat"
+- extendedWaitUntil:
+    visible: "Squat"
+    timeout: 3000
+- takeScreenshot: shots/32-workout-with-squat
+- tapOn:
+    id: "set-done-0"
+    optional: true
+- takeScreenshot: shots/33-after-tick
+- scrollUntilVisible:
+    element: "Finish workout"
+- tapOn:
+    text: "Finish workout"
+    retryTapIfNoChange: false
+- takeScreenshot: shots/34-finish-dialog

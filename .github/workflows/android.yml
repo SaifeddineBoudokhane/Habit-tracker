@@ -66,3 +66,62 @@ jobs:
             --title "Habit Tracker build ${{ github.run_number }}" \
             --notes "Built from ${{ github.ref_name }} @ ${GITHUB_SHA::7}. Install habit-tracker.apk on your phone." \
             --latest
+
+  e2e:
+    # Runs the real app on an Android emulator and taps through it with Maestro.
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+      - name: Build x86_64 APK for the emulator
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=x86_64
+      - run: cp android/app/build/outputs/apk/release/app-release.apk habit-tracker-x86_64.apk
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run flows on emulator
+        id: flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash e2e/run.sh
+        continue-on-error: true
+      - name: Publish screenshots and logs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd e2e-out || exit 0
+          gh release view e2e >/dev/null 2>&1 || gh release create e2e --prerelease --latest=false \
+            --title "E2E screenshots (latest run)" --notes "Screenshots and logs from the newest emulator test run."
+          # Replace everything from the previous run.
+          for a in $(gh release view e2e --json assets -q '.assets[].name'); do gh release delete-asset e2e "$a" -y; done
+          zip -qr e2e-debug.zip debug-* || true
+          gh release upload e2e shots/*.png summary.txt logcat.txt e2e-debug.zip --clobber || true
+          gh release edit e2e --notes "Commit ${GITHUB_SHA::7}: $(tr '\n' ' ' < summary.txt)"
+      - name: Fail if flows failed
+        if: steps.flows.outcome != 'success'
+        run: exit 1

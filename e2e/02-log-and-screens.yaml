@@ -1,0 +1,59 @@
+appId: com.saifeddine.habittracker
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Create your first habit"
+    timeout: 30000
+# Count habit
+- tapOn: "Create your first habit"
+- tapOn: "e.g. Workout"
+- inputText: "Water"
+- hideKeyboard
+- tapOn: "Count"
+- takeScreenshot: shots/10-new-count-habit
+- scrollUntilVisible:
+    element: "Create habit"
+- tapOn:
+    text: "Create habit"
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: "0 / 8"
+    timeout: 3000
+# Three quick +1 taps must all count.
+- tapOn:
+    text: "+1"
+    retryTapIfNoChange: false
+- tapOn:
+    text: "+1"
+    retryTapIfNoChange: false
+- tapOn:
+    text: "+1"
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: "3 / 8"
+    timeout: 3000
+- takeScreenshot: shots/11-today-water-3
+# Entry editor sheet
+- tapOn: "Water"
+- takeScreenshot: shots/12-entry-editor
+- tapOn: "Cancel"
+# Habits tab and detail
+- tapOn: "Habits"
+- takeScreenshot: shots/13-habits-tab
+- tapOn: "Water"
+- takeScreenshot: shots/14-habit-detail-top
+- scroll
+- takeScreenshot: shots/15-habit-detail-middle
+- scroll
+- takeScreenshot: shots/16-habit-detail-bottom
+- back
+# Stats and settings
+- tapOn: "Stats"
+- takeScreenshot: shots/17-stats
+- tapOn: "Settings"
+- takeScreenshot: shots/18-settings-top
+- scroll
+- takeScreenshot: shots/19-settings-middle
+- scroll
+- takeScreenshot: shots/20-settings-bottom
