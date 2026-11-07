@@ -41,6 +41,7 @@ app in place and keeps your data.
 - Finishing a workout can tick your "Workout" habit automatically (Settings).
 
 **Other**
+- **Home-screen widget** ("Habits today"): see today's habits and tap one to log it.
 - Reorder habits, archive them, dark mode (follows the phone).
 - App lock with fingerprint / screen lock.
 - Backup: export/restore JSON (everything), export CSV of habits and workouts. Data only lives on the phone,

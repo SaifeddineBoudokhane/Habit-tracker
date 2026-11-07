@@ -73,7 +73,7 @@ on a rolling window each time the app opens. Android has no such cap.
 - Rest timer between sets.
 - Logging a workout automatically ticks the "Workout" habit.
 
-### Nice-to-have ✅ built (widget: see below)
+### Nice-to-have ✅ built
 
 - Home-screen widget to check off habits.
 - Dark mode (cheap, so probably worth doing early).

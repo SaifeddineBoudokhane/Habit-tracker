@@ -6,12 +6,14 @@ import * as BackgroundTask from 'expo-background-task';
 import type * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 
+import { refreshWidget } from '@/widget/handler';
+
 import { NOTIFICATION_TASK, REFRESH_TASK, handleNotificationResponse, syncReminders } from './scheduler';
 
 TaskManager.defineTask<Notifications.NotificationTaskPayload>(NOTIFICATION_TASK, async ({ data, error }) => {
   if (error || !data || !('actionIdentifier' in data)) return;
   try {
-    await handleNotificationResponse(data);
+    if (await handleNotificationResponse(data)) await refreshWidget();
   } catch (e) {
     console.warn('Notification action failed', e);
   }
@@ -21,6 +23,7 @@ TaskManager.defineTask<Notifications.NotificationTaskPayload>(NOTIFICATION_TASK,
 TaskManager.defineTask(REFRESH_TASK, async () => {
   try {
     await syncReminders();
+    await refreshWidget();
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch {
     return BackgroundTask.BackgroundTaskResult.Failed;

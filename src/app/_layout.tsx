@@ -1,6 +1,3 @@
-// Must be first: defines background tasks before Android runs them headlessly.
-import '@/notifications/tasks';
-
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';

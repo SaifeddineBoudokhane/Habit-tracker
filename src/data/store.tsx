@@ -7,6 +7,7 @@ import { todayKey } from '@/lib/dates';
 import type { Entry, EntryIndex, Exercise, Goal, Habit, Settings, Workout, WorkoutSet, WorkoutTemplate } from '@/lib/types';
 import { DEFAULT_SETTINGS } from '@/lib/types';
 import { handleNotificationResponse, setupNotifications, syncReminders } from '@/notifications/scheduler';
+import { refreshWidget } from '@/widget/handler';
 
 import { emptyEntry } from './actions';
 import * as db from './db';
@@ -70,6 +71,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (syncTimer.current) clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(() => {
       syncReminders().catch((e) => console.warn('Reminder sync failed', e));
+      void refreshWidget();
     }, 800);
   }, []);
 
@@ -165,8 +167,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .sort((a, b) => a.sortOrder - b.sortOrder);
       setHabits(updated);
       for (const h of updated) await db.saveHabit(h);
+      scheduleSync();
     },
-    [habits],
+    [habits, scheduleSync],
   );
 
   const updateSettings = useCallback(
