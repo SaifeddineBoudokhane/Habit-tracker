@@ -90,7 +90,7 @@ function HabitCard({ habit }: { habit: Habit }) {
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/habit/[id]', params: { id: habit.id } })}
-      style={({ pressed }) => [s.card, { backgroundColor: c.card, borderColor: c.border, opacity: pressed ? 0.85 : 1 }]}>
+      style={({ pressed }) => [s.card, { backgroundColor: c.card, borderColor: c.border, borderLeftWidth: 4, borderLeftColor: habit.color, opacity: pressed ? 0.85 : 1 }]}>
       <View style={[s.icon, { backgroundColor: habit.color + '26' }]}>
         <Text style={{ fontSize: 22 }}>{habit.emoji}</Text>
       </View>

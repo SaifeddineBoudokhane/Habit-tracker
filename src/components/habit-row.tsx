@@ -42,7 +42,7 @@ export function HabitRow({ habit, date, onEdit }: { habit: Habit; date: string; 
       onPress={onEdit}
       style={({ pressed }) => [
         row.wrap,
-        { backgroundColor: c.card, borderColor: c.border, opacity: pressed ? 0.85 : 1 },
+        { backgroundColor: c.card, borderColor: c.border, borderLeftWidth: 4, borderLeftColor: habit.color, opacity: pressed ? 0.85 : 1 },
       ]}>
       <View style={[row.icon, { backgroundColor: habit.color + '26' }]}>
         <Text style={{ fontSize: 22 }}>{habit.emoji}</Text>

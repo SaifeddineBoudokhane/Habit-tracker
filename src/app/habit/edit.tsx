@@ -4,7 +4,7 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleShee
 
 import { TimeField } from '@/components/time-field';
 import { Body, Button, Card, Chip, Input, Label, NumberInput, Segmented } from '@/components/ui';
-import { EMOJI_SUGGESTIONS, HABIT_COLORS, useColors } from '@/constants/theme';
+import { EMOJI_SUGGESTIONS, HABIT_COLORS, isHexColor, useColors } from '@/constants/theme';
 import { newId, useStore } from '@/data/store';
 import { getWeekStartDay, weekdayShort } from '@/lib/dates';
 import type { Habit, HabitGroup, HabitKind, Reminder, Schedule, Weekday } from '@/lib/types';
@@ -50,7 +50,8 @@ export default function EditHabitScreen() {
 
   const [name, setName] = useState(existing?.name ?? '');
   const [emoji, setEmoji] = useState(existing?.emoji ?? '💪');
-  const [color, setColor] = useState(existing?.color ?? HABIT_COLORS[5]);
+  const [color, setColor] = useState(existing?.color ?? HABIT_COLORS[7]);
+  const [customColor, setCustomColor] = useState(existing && !HABIT_COLORS.includes(existing.color) ? existing.color : '');
   const [kind, setKind] = useState<HabitKind>(existing?.kind ?? 'check');
   const [target, setTarget] = useState(existing?.target ?? 8);
   const [unit, setUnit] = useState(existing?.unit ?? '');
@@ -130,14 +131,51 @@ export default function EditHabitScreen() {
               </Pressable>
             ))}
           </ScrollView>
+        </Card>
+
+        <Card>
+          <Label>Color</Label>
+          <View style={[s.preview, { backgroundColor: c.muted }]}>
+            <View style={[s.previewIcon, { backgroundColor: color + '26' }]}>
+              <Text style={{ fontSize: 22 }}>{emoji || '✅'}</Text>
+            </View>
+            <Text style={{ color: c.text, fontSize: 16, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+              {name || 'Habit name'}
+            </Text>
+            <View style={[s.previewCheck, { backgroundColor: color, borderColor: color }]}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 18 }}>✓</Text>
+            </View>
+          </View>
           <View style={[s.row, { marginTop: 12 }]}>
             {HABIT_COLORS.map((col) => (
               <Pressable
                 key={col}
-                onPress={() => setColor(col)}
-                style={[s.swatch, { backgroundColor: col, borderColor: color === col ? c.text : 'transparent' }]}
-              />
+                onPress={() => {
+                  setColor(col);
+                  setCustomColor('');
+                }}
+                hitSlop={4}
+                style={[s.swatch, { backgroundColor: col, borderColor: color === col ? c.text : 'transparent' }]}>
+                {color === col && <Text style={s.swatchTick}>✓</Text>}
+              </Pressable>
             ))}
+          </View>
+          <View style={[s.inline, { marginTop: 12 }]}>
+            <Body>Custom</Body>
+            <Input
+              value={customColor}
+              onChangeText={(t) => {
+                const v = (t.startsWith('#') ? t : `#${t}`).slice(0, 7);
+                setCustomColor(t ? v : '');
+                if (isHexColor(v)) setColor(v.toLowerCase());
+              }}
+              placeholder="#ff8800"
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={7}
+              style={{ width: 120 }}
+            />
+            {customColor !== '' && !isHexColor(customColor) && <Body muted style={{ fontSize: 13 }}>Use #RRGGBB</Body>}
           </View>
         </Card>
 
@@ -259,7 +297,11 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   emoji: { width: 42, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  swatch: { width: 32, height: 32, borderRadius: 16, borderWidth: 3 },
+  swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
+  swatchTick: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  preview: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 14 },
+  previewIcon: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  previewCheck: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   reminder: {
     flexDirection: 'row',
     alignItems: 'center',

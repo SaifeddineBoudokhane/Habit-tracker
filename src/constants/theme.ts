@@ -34,17 +34,30 @@ export function useColors(): Palette {
 }
 
 /** Habit colors to pick from. */
+/** Habit colors to pick from (any #RRGGBB can also be typed in). */
 export const HABIT_COLORS = [
-  '#ef4444',
-  '#f97316',
-  '#eab308',
-  '#22c55e',
-  '#14b8a6',
-  '#3b82f6',
-  '#6366f1',
-  '#a855f7',
-  '#ec4899',
-  '#64748b',
+  '#ef4444', // red
+  '#f43f5e', // rose
+  '#ec4899', // pink
+  '#d946ef', // fuchsia
+  '#a855f7', // purple
+  '#8b5cf6', // violet
+  '#6366f1', // indigo
+  '#3b82f6', // blue
+  '#0ea5e9', // sky
+  '#06b6d4', // cyan
+  '#14b8a6', // teal
+  '#10b981', // emerald
+  '#22c55e', // green
+  '#84cc16', // lime
+  '#eab308', // yellow
+  '#f59e0b', // amber
+  '#f97316', // orange
+  '#a16207', // brown
+  '#64748b', // slate
+  '#111827', // near black
 ];
+
+export const isHexColor = (c: string) => /^#[0-9a-f]{6}$/i.test(c);
 
 export const EMOJI_SUGGESTIONS = ['💪', '🏃', '💧', '📖', '🧘', '🥗', '😴', '🦷', '💊', '🚭', '🍬', '📵', '✍️', '🎸', '🧹', '🚶'];
