@@ -35,3 +35,29 @@ test('custom step for count habits', () => {
   expect(stepOf(habit({ kind: 'count' }))).toBe(1);
   expect(stepOf(habit({ kind: 'duration', target: 30 }))).toBe(10);
 });
+
+describe('backfillDays', () => {
+  const { backfillDays } = jest.requireActual('../schedule') as typeof import('../schedule');
+
+  test('daily: every free day in range, keeps what was already logged', () => {
+    const h = habit({ startDate: '2026-10-28' });
+    const i = idx('h1', { '2026-10-29': 'skip', '2026-10-30': 1 });
+    expect(backfillDays(h, i, '2026-10-28', '2026-10-31')).toEqual(['2026-10-28', '2026-10-31']);
+  });
+
+  test('specific weekdays only', () => {
+    const h = habit({ startDate: '2026-10-26', schedule: { type: 'weekdays', days: [1, 3] } });
+    expect(backfillDays(h, new Map(), '2026-10-26', '2026-11-01')).toEqual(['2026-10-26', '2026-10-28']);
+  });
+
+  test('per week: fills only up to the quota', () => {
+    const h = habit({ startDate: '2026-10-26', schedule: { type: 'perWeek', times: 2 } });
+    const i = idx('h1', { '2026-10-27': 1 });
+    expect(backfillDays(h, i, '2026-10-26', '2026-11-01')).toEqual(['2026-10-26']);
+  });
+
+  test('avoid habits need no entries', () => {
+    const h = habit({ kind: 'avoid', startDate: '2026-10-01' });
+    expect(backfillDays(h, new Map(), '2026-10-01', '2026-10-31')).toEqual([]);
+  });
+});

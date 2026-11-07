@@ -82,3 +82,29 @@ export function describeSchedule(habit: Habit): string {
     }
   }
 }
+
+/**
+ * Days in [from, to] to mark done when you say you've kept the habit since an earlier start date.
+ * Only scheduled days with nothing logged; "X per week" fills the first X free days of each week.
+ * Avoid habits need nothing: days without a slip already count as clean.
+ */
+export function backfillDays(habit: Habit, index: EntryIndex, from: string, to: string): string[] {
+  if (habit.kind === 'avoid' || from > to) return [];
+  const out: string[] = [];
+  const free = (d: string) => !getEntry(index, habit.id, d);
+  if (habit.schedule.type === 'perWeek') {
+    const times = habit.schedule.times;
+    for (let w = weekStart(from); w <= to; w = addDays(w, 7)) {
+      let count = weekCount(habit, index, w);
+      for (let i = 0; i < 7 && count < times; i++) {
+        const d = addDays(w, i);
+        if (d < from || d > to || !free(d)) continue;
+        out.push(d);
+        count++;
+      }
+    }
+    return out;
+  }
+  for (let d = from; d <= to; d = addDays(d, 1)) if (isScheduled(habit, d) && free(d)) out.push(d);
+  return out;
+}

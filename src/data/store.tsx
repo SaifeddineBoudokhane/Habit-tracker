@@ -21,6 +21,8 @@ interface Store extends BackupData {
   today: string;
   entryFor(habitId: string, date: string): Entry;
   setEntry(e: Entry): Promise<void>;
+  /** Add many entries in one go (e.g. back-filling days before the app was used). */
+  addEntries(es: Entry[]): Promise<void>;
   /** Change an entry based on its latest value (safe for rapid repeated taps). */
   updateEntry(habitId: string, date: string, fn: (e: Entry) => Entry): Promise<void>;
   saveHabit(h: Habit): Promise<void>;
@@ -180,6 +182,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [scheduleSync, persist],
   );
 
+  const addEntries = useCallback(
+    (es: Entry[]): Promise<void> => {
+      if (es.length === 0) return Promise.resolve();
+      const keys = new Set(es.map((e) => `${e.habitId}|${e.date}`));
+      entriesRef.current = [...entriesRef.current.filter((x) => !keys.has(`${x.habitId}|${x.date}`)), ...es];
+      setEntries(entriesRef.current);
+      scheduleSync();
+      return persist(Promise.all(es.map((e) => db.putEntry(e))).then(() => {}));
+    },
+    [scheduleSync, persist],
+  );
+
   const updateEntry = useCallback(
     (habitId: string, date: string, fn: (e: Entry) => Entry): Promise<void> => {
       const current = entriesRef.current.find((x) => x.habitId === habitId && x.date === date) ?? emptyEntry(habitId, date);
@@ -318,6 +332,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     today,
     entryFor,
     setEntry,
+    addEntries,
     updateEntry,
     saveHabit,
     removeHabit,
