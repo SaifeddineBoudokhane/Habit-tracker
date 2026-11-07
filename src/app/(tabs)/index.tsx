@@ -8,6 +8,7 @@ import { Body, Button } from '@/components/ui';
 import { useColors } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { addDays, prettyDate } from '@/lib/dates';
+import { encouragement } from '@/lib/motivation';
 import { getEntry, isComplete, isDueOn } from '@/lib/schedule';
 import type { Habit, HabitGroup } from '@/lib/types';
 
@@ -29,6 +30,7 @@ export default function TodayScreen() {
   const active = habits.filter((h) => !h.archived && h.startDate <= date);
   const due = active.filter((h) => isDueOn(h, index, date));
   const others = active.filter((h) => !isDueOn(h, index, date));
+  const message = habits.length ? encouragement(habits, index, today) : null;
   const sections = GROUPS.map((g) => ({ ...g, items: due.filter((h) => (h.group ?? 'anytime') === g.key) })).filter(
     (g) => g.items.length > 0,
   );
@@ -74,6 +76,15 @@ export default function TodayScreen() {
       )}
 
       <ScrollView contentContainerStyle={s.list} keyboardShouldPersistTaps="handled">
+        {offset === 0 && message && (
+          <View style={[s.banner, { backgroundColor: c.card, borderColor: c.border }]}>
+            <Text style={{ fontSize: 26 }}>{message.emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: c.text, fontWeight: '700', fontSize: 15 }}>{message.title}</Text>
+              <Text style={{ color: c.textSecondary, fontSize: 13 }}>{message.body}</Text>
+            </View>
+          </View>
+        )}
         {due.length === 0 && <Body muted style={{ textAlign: 'center', marginTop: 24 }}>Nothing due {offset === 0 ? 'today' : 'this day'} 🎉</Body>}
         {sections.map(({ key, label, items }) => (
           <View key={key} style={{ gap: 10 }}>
@@ -116,6 +127,7 @@ const s = StyleSheet.create({
   progressTrack: { height: 4 },
   progressFill: { height: 4 },
   list: { padding: 16, gap: 10, paddingBottom: 40 },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth },
   section: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 6 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyTitle: { fontSize: 22, fontWeight: '700', marginVertical: 8 },

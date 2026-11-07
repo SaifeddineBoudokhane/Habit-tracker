@@ -232,6 +232,7 @@ function ExerciseBlock({
               onSetDone({ ...filled, done: !st.done });
             }}
             hitSlop={6}
+            testID={`set-done-${i}`}
             style={[s.colDone, s.check, { borderColor: st.done ? c.success : c.border, backgroundColor: st.done ? c.success : 'transparent' }]}>
             <Text style={{ color: '#fff', fontWeight: '700' }}>{st.done ? '✓' : ''}</Text>
           </Pressable>

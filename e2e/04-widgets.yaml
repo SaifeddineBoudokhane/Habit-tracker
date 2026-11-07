@@ -1,0 +1,41 @@
+appId: com.saifeddine.habittracker
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Create your first habit"
+    timeout: 30000
+- tapOn: "Create your first habit"
+- tapOn: "e.g. Workout"
+- inputText: "Read"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Create habit"
+- tapOn:
+    text: "Create habit"
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: "0 of 1 done"
+    timeout: 3000
+- tapOn:
+    id: "check-.*"
+    optional: true
+- takeScreenshot: shots/40-today-done-banner
+- tapOn: "Settings"
+- tapOn: ".*Home-screen widgets.*"
+- extendedWaitUntil:
+    visible: "Habits today"
+    timeout: 5000
+- takeScreenshot: shots/41-widgets-top
+- scroll
+- takeScreenshot: shots/42-widgets-middle
+- scroll
+- takeScreenshot: shots/43-widgets-bottom
+# Deep link a single-habit widget would open
+- openLink: "habittracker://widget-setup?widgetId=999"
+- extendedWaitUntil:
+    visible: "Which habit should this widget show?"
+    timeout: 5000
+- takeScreenshot: shots/44-widget-setup
+- tapOn: "Read"
+- takeScreenshot: shots/45-after-widget-setup

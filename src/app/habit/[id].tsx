@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { requestPinWidget } from 'react-native-android-widget';
 
 import { EntryEditor } from '@/components/entry-editor';
 import { GoalCard } from '@/components/goal-card';
@@ -20,7 +21,7 @@ export default function HabitDetailScreen() {
   const c = useColors();
   const nav = useNavigation();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { habits, index, today, saveHabit, removeHabit, goals } = useStore();
+  const { habits, index, today, saveHabit, removeHabit, goals, updateSettings } = useStore();
   const habit = habits.find((h) => h.id === id);
   const [editingDate, setEditingDate] = useState<string | null>(null);
 
@@ -145,6 +146,21 @@ export default function HabitDetailScreen() {
       </Card>
 
       <View style={{ gap: 10 }}>
+        {Platform.OS === 'android' && !habit.archived && (
+          <Button
+            title="➕ Add widget to home screen"
+            kind="secondary"
+            onPress={async () => {
+              await updateSettings({ pendingWidgetHabit: habit.id });
+              const ok = await requestPinWidget({ widgetName: 'Habit' }).catch(() => false);
+              if (!ok)
+                Alert.alert(
+                  'Add it from the home screen',
+                  'Long-press an empty spot on your home screen → Widgets → Habit Tracker → Single habit.',
+                );
+            }}
+          />
+        )}
         <Button
           title={habit.archived ? 'Unarchive' : 'Archive (hide, keep history)'}
           kind="secondary"

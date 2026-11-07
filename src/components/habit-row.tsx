@@ -101,6 +101,7 @@ function ActionButton({
       <Pressable
         onPress={onPress}
         hitSlop={hit}
+        testID={`check-${habit.id}`}
         style={[
           row.check,
           { borderColor: done ? habit.color : c.border, backgroundColor: done ? habit.color : 'transparent' },

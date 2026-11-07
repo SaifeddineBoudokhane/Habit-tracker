@@ -3,9 +3,9 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import * as Notifications from 'expo-notifications';
 import * as Sharing from 'expo-sharing';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { canUseAppLock, confirmIdentity } from '@/components/app-lock';
 import { TimeField } from '@/components/time-field';
@@ -166,6 +166,18 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      {Platform.OS === 'android' && (
+        <Pressable onPress={() => router.push('/widgets')}>
+          <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: c.text, fontSize: 16, fontWeight: '600' }}>🧩 Home-screen widgets</Text>
+              <Body muted style={{ fontSize: 13 }}>Preview and add widgets</Body>
+            </View>
+            <Text style={{ color: c.textSecondary, fontSize: 22 }}>›</Text>
+          </Card>
+        </Pressable>
+      )}
+
       <Card>
         <Label>Notifications</Label>
         {permission === false ? (

@@ -77,6 +77,8 @@ export interface Settings {
   autoBackupError: string;
   /** Single-habit widgets: widgetId -> habitId. */
   widgetHabits: Record<string, string>;
+  /** Habit to assign to the next single-habit widget placed from the app. */
+  pendingWidgetHabit: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -95,6 +97,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lastAutoBackupAt: '',
   autoBackupError: '',
   widgetHabits: {},
+  pendingWidgetHabit: '',
 };
 
 /** habitId -> date key -> entry */

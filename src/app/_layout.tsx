@@ -40,6 +40,8 @@ export default function RootLayout() {
           <Stack.Screen name="exercises" options={{ title: 'Exercises' }} />
           <Stack.Screen name="exercise/[id]" options={{ title: '' }} />
           <Stack.Screen name="template/[id]" options={{ title: 'Template' }} />
+          <Stack.Screen name="widgets" options={{ title: 'Home-screen widgets' }} />
+          <Stack.Screen name="widget-setup" options={{ title: 'Choose habit' }} />
         </Stack>
         <AppLock />
       </StoreProvider>
