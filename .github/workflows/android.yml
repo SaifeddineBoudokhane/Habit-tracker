@@ -11,8 +11,8 @@ permissions:
 
 concurrency:
   group: android-${{ github.ref }}
-  # Let a running build finish (its emulator results are useful); the next one queues behind it.
-  cancel-in-progress: false
+  # A newer push makes an in-progress build obsolete: cancel it so the latest APK arrives sooner.
+  cancel-in-progress: true
 
 jobs:
   check:
