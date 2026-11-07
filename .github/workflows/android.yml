@@ -62,11 +62,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="build-${{ github.run_number }}"
-          gh release create "$TAG" habit-tracker.apk \
-            --target "${{ github.sha }}" \
-            --title "Habit Tracker build ${{ github.run_number }}" \
-            --notes "Built from ${{ github.ref_name }} @ ${GITHUB_SHA::7}. Install habit-tracker.apk on your phone." \
-            --latest
+          NOTES="Built from ${{ github.ref_name }} @ ${GITHUB_SHA::7}. Install habit-tracker.apk on your phone."
+          # Retry: the releases API occasionally answers 403 transiently.
+          for attempt in 1 2 3 4; do
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              gh release upload "$TAG" habit-tracker.apk --clobber && gh release edit "$TAG" --latest && exit 0
+            elif gh release create "$TAG" habit-tracker.apk --target "${{ github.sha }}" \
+                --title "Habit Tracker build ${{ github.run_number }}" --notes "$NOTES" --latest; then
+              exit 0
+            fi
+            echo "Attempt $attempt failed, retrying"; sleep $((attempt * 15))
+          done
+          exit 1
 
   e2e:
     # Runs the real app on an Android emulator and taps through it with Maestro.
