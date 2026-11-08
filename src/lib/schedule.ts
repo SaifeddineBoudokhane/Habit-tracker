@@ -108,3 +108,13 @@ export function backfillDays(habit: Habit, index: EntryIndex, from: string, to: 
   for (let d = from; d <= to; d = addDays(d, 1)) if (isScheduled(habit, d) && free(d)) out.push(d);
   return out;
 }
+
+/** Done / due for the habits that count toward a day (avoid habits don't). Skipped counts as done. */
+export function dayProgress(habits: Habit[], index: EntryIndex, date: string): { done: number; total: number } {
+  const due = habits.filter((h) => !h.archived && h.startDate <= date && h.kind !== 'avoid' && isDueOn(h, index, date));
+  const done = due.filter((h) => {
+    const e = getEntry(index, h.id, date);
+    return isComplete(h, e) || !!e?.skipped;
+  }).length;
+  return { done, total: due.length };
+}

@@ -24,7 +24,7 @@ export default function TabsLayout() {
         tabBarStyle: { backgroundColor: c.card, borderTopColor: c.border },
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Today', tabBarIcon: icon('today', 'today-fill') }} />
+      <Tabs.Screen name="index" options={{ title: 'Today', tabBarLabel: 'Today', tabBarIcon: icon('today', 'today-fill') }} />
       <Tabs.Screen name="habits" options={{ title: 'Habits', tabBarIcon: icon('habits') }} />
       <Tabs.Screen name="workouts" options={{ title: 'Workouts', tabBarIcon: icon('workouts') }} />
       <Tabs.Screen name="stats" options={{ title: 'Stats', tabBarIcon: icon('stats') }} />

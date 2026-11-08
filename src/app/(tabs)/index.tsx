@@ -1,7 +1,8 @@
 import { router, useNavigation } from 'expo-router';
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { DayCalendar } from '@/components/day-calendar';
 import { EntryEditor } from '@/components/entry-editor';
 import { HabitRow } from '@/components/habit-row';
 import { Icon, type UiIconName } from '@/components/icon';
@@ -11,8 +12,8 @@ import { radius, space, type as typo, useColors } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { addDays, diffDays, prettyDate, weekday } from '@/lib/dates';
 import { encouragement } from '@/lib/motivation';
-import { getEntry, isComplete, isDueOn } from '@/lib/schedule';
-import type { EntryIndex, Habit, HabitGroup } from '@/lib/types';
+import { dayProgress, isDueOn } from '@/lib/schedule';
+import type { Habit, HabitGroup } from '@/lib/types';
 
 const GROUPS: { key: HabitGroup; label: string; icon: UiIconName }[] = [
   { key: 'morning', label: 'Morning', icon: 'morning' },
@@ -23,16 +24,6 @@ const GROUPS: { key: HabitGroup; label: string; icon: UiIconName }[] = [
 
 const LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-/** Done / due for the habits that count toward a day (avoid habits don't). */
-function dayProgress(habits: Habit[], index: EntryIndex, date: string) {
-  const due = habits.filter((h) => !h.archived && h.startDate <= date && h.kind !== 'avoid' && isDueOn(h, index, date));
-  const done = due.filter((h) => {
-    const e = getEntry(index, h.id, date);
-    return isComplete(h, e) || e?.skipped;
-  }).length;
-  return { done, total: due.length };
-}
-
 export default function TodayScreen() {
   const c = useColors();
   const nav = useNavigation();
@@ -40,14 +31,43 @@ export default function TodayScreen() {
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState<Habit | null>(null);
   const [showOthers, setShowOthers] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const date = addDays(today, offset);
   // The strip shows the week ending on today, or on the selected day when it's further back.
   const stripEnd = offset > -7 ? today : addDays(date, 3);
   const stripDays = Array.from({ length: 7 }, (_, k) => addDays(stripEnd, k - 6));
 
+  // Header: the day's name, a "Today" pill whenever you're looking at another day, and the calendar.
   useLayoutEffect(() => {
-    nav.setOptions({ title: prettyDate(date, today) });
-  }, [nav, date, today]);
+    nav.setOptions({
+      title: prettyDate(date, today),
+      headerRight: () => (
+        <View style={s.headerRight}>
+          {offset !== 0 && (
+            <Pressable
+              onPress={() => setOffset(0)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Go to today"
+              style={[s.todayChip, { backgroundColor: c.muted }]}>
+              <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>Today</Text>
+            </Pressable>
+          )}
+          {habits.length > 0 && (
+            <IconButton icon="calendar_today" label="Open calendar" color={c.text} onPress={() => setCalendarOpen(true)} size={44} />
+          )}
+        </View>
+      ),
+    });
+  }, [nav, date, today, offset, habits.length, c.text, c.muted]);
+
+  // Tapping the Today tab while already on it jumps back to today.
+  useEffect(() => {
+    const unsub = nav.addListener('tabPress' as never, () => {
+      if (nav.isFocused()) setOffset(0);
+    });
+    return unsub;
+  }, [nav]);
 
   const active = habits.filter((h) => !h.archived && h.startDate <= date);
   const due = active.filter((h) => isDueOn(h, index, date));
@@ -138,11 +158,6 @@ export default function TodayScreen() {
                   : 'Tap a habit to fix what you logged that day.'}
               </Text>
             </View>
-            {offset !== 0 && (
-              <Pressable onPress={() => setOffset(0)} hitSlop={8} accessibilityRole="button" style={[s.todayChip, { backgroundColor: c.muted }]}>
-                <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>Today</Text>
-              </Pressable>
-            )}
           </View>
         )}
 
@@ -181,6 +196,12 @@ export default function TodayScreen() {
       </ScrollView>
 
       <EntryEditor habit={editing} date={date} onClose={() => setEditing(null)} />
+      <DayCalendar
+        visible={calendarOpen}
+        selected={date}
+        onPick={(d) => setOffset(-diffDays(d, today))}
+        onClose={() => setCalendarOpen(false)}
+      />
     </View>
   );
 }
@@ -194,6 +215,7 @@ const s = StyleSheet.create({
   dayNum: { fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
   summary: { flexDirection: 'row', alignItems: 'center', gap: space.lg, padding: space.lg, borderRadius: radius.lg, borderCurve: 'continuous' },
   summaryNum: { fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.sm },
   todayChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.full },
   othersToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: space.sm },
 });
