@@ -15,8 +15,17 @@ status=0
 for f in ../e2e/0*.yaml; do
   name=$(basename "$f" .yaml)
   echo "::group::$name"
+  # Each flow relaunches the app with clearState. If the previous flow's app is still being torn down,
+  # the emulator can kill the new process mid-start ("Destroy timeout of remove-task"), leaving the
+  # splash screen up forever. Stop the app and let it settle first, and give a failed flow one retry
+  # so that emulator hiccup doesn't fail the build. A real bug fails both times.
+  adb shell am force-stop com.saifeddine.habittracker || true
+  sleep 3
   if "$HOME/.maestro/bin/maestro" test "$f" --debug-output "debug-$name"; then
     echo "PASS $name" | tee -a summary.txt
+  elif { echo "Retrying $name"; adb shell am force-stop com.saifeddine.habittracker; sleep 5; } &&
+    "$HOME/.maestro/bin/maestro" test "$f" --debug-output "debug-$name-retry"; then
+    echo "PASS $name (on retry)" | tee -a summary.txt
   else
     echo "FAIL $name" | tee -a summary.txt
     status=1
