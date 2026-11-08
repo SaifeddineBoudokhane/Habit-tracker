@@ -1,4 +1,4 @@
-import { addDays, atTime, parseTime, toKey } from './dates';
+import { addDays, atTime, parseTime, todayKey } from './dates';
 import { getEntry, isComplete, isScheduled, weekCount } from './schedule';
 import type { EntryIndex, Habit, Reminder, Settings } from './types';
 
@@ -55,7 +55,7 @@ export function planNotifications(
   now: Date,
   days = 7,
 ): PlannedNotification[] {
-  const today = toKey(now);
+  const today = todayKey(now);
   const out: PlannedNotification[] = [];
   for (const habit of habits) {
     if (habit.archived || habit.reminders.length === 0) continue;

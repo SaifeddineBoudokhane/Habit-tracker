@@ -17,8 +17,24 @@ export function fromKey(key: string): Date {
   return new Date(y, m - 1, d);
 }
 
+let dayEndHour = 0;
+
+/**
+ * Hour (0-6) after midnight when "today" rolls over. With 3, 1:30 AM still counts as the previous day,
+ * so night owls can log before bed. Set from the user's settings.
+ */
+export function setDayEndHour(hour: number): void {
+  dayEndHour = Number.isFinite(hour) ? Math.max(0, Math.min(6, Math.floor(hour))) : 0;
+}
+
+export function getDayEndHour(): number {
+  return dayEndHour;
+}
+
+/** The habit day `now` falls in: the calendar date, minus one before the day-end hour. */
 export function todayKey(now: Date = new Date()): string {
-  return toKey(now);
+  if (dayEndHour === 0) return toKey(now);
+  return toKey(new Date(now.getTime() - dayEndHour * 3_600_000));
 }
 
 export function addDays(key: string, n: number): string {

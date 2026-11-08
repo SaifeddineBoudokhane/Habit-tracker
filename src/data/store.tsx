@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Alert, AppState } from 'react-native';
 
 import type { Backup, BackupData } from '@/lib/backup';
-import { setWeekStartDay, todayKey } from '@/lib/dates';
+import { setDayEndHour, setWeekStartDay, todayKey } from '@/lib/dates';
 import type { Entry, EntryIndex, Exercise, Goal, Habit, Settings, Workout, WorkoutSet, WorkoutTemplate } from '@/lib/types';
 import { DEFAULT_SETTINGS } from '@/lib/types';
 import { handleNotificationResponse, registerCategories, setupNotifications, syncReminders } from '@/notifications/scheduler';
@@ -241,10 +241,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const next = { ...settingsRef.current, ...patch };
       settingsRef.current = next;
       if (patch.weekStartDay !== undefined) setWeekStartDay(next.weekStartDay);
+      if (patch.dayEndHour !== undefined) {
+        setDayEndHour(next.dayEndHour);
+        setToday(todayKey());
+      }
       setSettings(next);
       if (patch.snoozeMinutes !== undefined) registerCategories(next.snoozeMinutes).catch(() => {});
       // Only settings that change which reminders fire need a reminder refresh.
-      if (['quietEnabled', 'quietStart', 'quietEnd', 'weekStartDay'].some((k) => k in patch)) scheduleSync();
+      if (['quietEnabled', 'quietStart', 'quietEnd', 'weekStartDay', 'dayEndHour'].some((k) => k in patch)) scheduleSync();
       return persist(db.patchSettings(patch));
     },
     [scheduleSync, persist],

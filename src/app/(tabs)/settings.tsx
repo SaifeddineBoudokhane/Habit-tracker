@@ -142,7 +142,7 @@ export default function SettingsScreen() {
   };
 
   const resetSettings = () =>
-    Alert.alert('Reset settings?', 'Quiet hours, rest timer, snooze, week start, app lock and the workout habit go back to defaults. Your data is not touched.', [
+    Alert.alert('Reset settings?', 'Quiet hours, rest timer, snooze, week start, day end, app lock and the workout habit go back to defaults. Your data is not touched.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reset',
@@ -156,6 +156,7 @@ export default function SettingsScreen() {
             restSeconds: DEFAULT_SETTINGS.restSeconds,
             workoutHabitId: DEFAULT_SETTINGS.workoutHabitId,
             weekStartDay: DEFAULT_SETTINGS.weekStartDay,
+            dayEndHour: DEFAULT_SETTINGS.dayEndHour,
             snoozeMinutes: DEFAULT_SETTINGS.snoozeMinutes,
           }),
       },
@@ -340,6 +341,25 @@ export default function SettingsScreen() {
           />
         </View>
         <Body muted style={{ fontSize: 13, marginTop: 6 }}>Used for “X times per week” habits, weekly stats and calendars.</Body>
+        <Body style={{ marginTop: 14 }}>Day ends at</Body>
+        <View style={{ marginTop: 8 }}>
+          <Segmented
+            options={[
+              { value: '0', label: '12 AM' },
+              { value: '1', label: '1 AM' },
+              { value: '2', label: '2 AM' },
+              { value: '3', label: '3 AM' },
+              { value: '4', label: '4 AM' },
+            ]}
+            value={String(settings.dayEndHour ?? 0)}
+            onChange={(v) => updateSettings({ dayEndHour: Number(v) })}
+          />
+        </View>
+        <Body muted style={{ fontSize: 13, marginTop: 6 }}>
+          {settings.dayEndHour
+            ? `Up late? Until ${settings.dayEndHour} AM, check-ins still count for the day before.`
+            : 'The day rolls over at midnight. Pick a later time if you often log after midnight.'}
+        </Body>
         <View style={[s.inline, { marginTop: 14 }]}>
           <Body>Snooze button length</Body>
           <NumberInput value={settings.snoozeMinutes} min={1} onChange={(n) => updateSettings({ snoozeMinutes: n })} />

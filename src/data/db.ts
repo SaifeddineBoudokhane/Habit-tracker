@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 
 import type { BackupData } from '@/lib/backup';
-import { setWeekStartDay } from '@/lib/dates';
+import { setDayEndHour, setWeekStartDay } from '@/lib/dates';
 import type { Entry, Exercise, Goal, Habit, Settings, Workout, WorkoutSet, WorkoutTemplate } from '@/lib/types';
 import { DEFAULT_SETTINGS } from '@/lib/types';
 import { DEFAULT_EXERCISES } from '@/lib/workouts';
@@ -168,6 +168,7 @@ export async function loadAll(): Promise<BackupData> {
     }
   }
   setWeekStartDay(settings.weekStartDay);
+  setDayEndHour(settings.dayEndHour);
   const setRows = await db.getAllAsync<{ data: string }>('SELECT data FROM sets');
   return {
     habits: habitRows.map((r) => JSON.parse(r.data) as Habit),

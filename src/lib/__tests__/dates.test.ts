@@ -1,4 +1,4 @@
-import { addDays, diffDays, weekStart, weekday } from '../dates';
+import { addDays, diffDays, setDayEndHour, setWeekStartDay, todayKey, weekStart, weekday } from '../dates';
 
 test('addDays crosses months and years', () => {
   expect(addDays('2026-10-31', 1)).toBe('2026-11-01');
@@ -19,7 +19,6 @@ test('weekStart is Monday', () => {
 });
 
 test('weekStart follows the configured first day', () => {
-  const { setWeekStartDay } = jest.requireActual('../dates') as typeof import('../dates');
   try {
     setWeekStartDay(0);
     expect(weekStart('2026-11-08')).toBe('2026-11-08'); // Sunday starts its own week
@@ -30,4 +29,19 @@ test('weekStart follows the configured first day', () => {
   } finally {
     setWeekStartDay(1);
   }
+});
+
+describe('day end hour', () => {
+  afterEach(() => setDayEndHour(0));
+
+  it('rolls over at midnight by default', () => {
+    expect(todayKey(new Date(2026, 10, 8, 0, 30))).toBe('2026-11-08');
+  });
+
+  it('keeps counting the previous day until the chosen hour', () => {
+    setDayEndHour(3);
+    expect(todayKey(new Date(2026, 10, 8, 2, 59))).toBe('2026-11-07');
+    expect(todayKey(new Date(2026, 10, 8, 3, 0))).toBe('2026-11-08');
+    expect(todayKey(new Date(2026, 10, 8, 23, 0))).toBe('2026-11-08');
+  });
 });

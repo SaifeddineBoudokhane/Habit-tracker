@@ -261,6 +261,9 @@ function buttonSvg(r: ButtonState, size: number, t: Theme, iconWithCount = false
   return out + `</svg>`;
 }
 
+/** Height kept for the name under a button (one 11sp line, with headroom for bigger system fonts). */
+const NAME_LINE = 24;
+
 /**
  * Compact: a row of habit buttons in your own order (they never move when tapped), sharing the width
  * equally. With room to spare, each name sits beside its ring; otherwise under it.
@@ -288,7 +291,7 @@ function TodayButtons({ rows, t, width, badge }: { rows: TodayRow[]; t: Theme; w
               <TextWidget text={r.name} maxLines={2} truncate="END" style={{ fontSize: 13, fontWeight: 'bold', color: t.text }} />
             </FlexWidget>
           ) : (
-            <TextWidget text={r.name} maxLines={1} truncate="END" style={{ fontSize: 11, color: t.text, marginTop: 2, textAlign: 'center' }} />
+            <TextWidget text={r.name} maxLines={1} truncate="END" style={{ fontSize: 11, color: t.text, marginTop: 1, textAlign: 'center' }} />
           )}
         </FlexWidget>
       ))}
@@ -355,7 +358,9 @@ export function TodayWidget({ data, dark, size }: { data: WidgetData; dark: bool
 
   // One row tall: just the buttons, names included (they're how you tell habits apart).
   if (size.height < 100) {
-    const badge = clamp(size.height - 12 - 15, 28, 46);
+    // Leave room for a full line of name text under the ring. Large system font sizes make that line
+    // taller than its 11sp, and launchers often report a bit more height than they draw, so reserve generously.
+    const badge = clamp(size.height - 12 - NAME_LINE, 26, 42);
     return (
       <FlexWidget style={{ ...root(t, 6), flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 }}>
         {data.rows.length === 0 ? (
@@ -377,7 +382,7 @@ export function TodayWidget({ data, dark, size }: { data: WidgetData; dark: bool
       {data.rows.length === 0 ? (
         <Empty t={t} icon={UI_ICONS.spa} title={data.message.title} body={compact ? undefined : data.message.body} />
       ) : compact ? (
-        <TodayButtons rows={data.rows} t={t} width={size.width - 24} badge={clamp(Math.floor(size.height - 24 - 30 - 18), 36, 52)} />
+        <TodayButtons rows={data.rows} t={t} width={size.width - 24} badge={clamp(Math.floor(size.height - 24 - 30 - NAME_LINE), 32, 52)} />
       ) : (
         <TodayList rows={data.rows} t={t} />
       )}

@@ -72,6 +72,8 @@ export interface Settings {
   timers: Record<string, number>;
   /** First day of the week for weekly quotas and stats: 1 = Monday, 0 = Sunday, 6 = Saturday. */
   weekStartDay: 0 | 1 | 6;
+  /** Hour after midnight when the day ends (0 = midnight, 3 = 3 AM the next morning). */
+  dayEndHour: number;
   /** Snooze length for the notification button, in minutes. */
   snoozeMinutes: number;
   /** Folder (Android content URI) for automatic backups, '' = off. */
@@ -97,6 +99,7 @@ export const DEFAULT_SETTINGS: Settings = {
   workoutHabitId: '',
   timers: {},
   weekStartDay: 1,
+  dayEndHour: 0,
   snoozeMinutes: 15,
   autoBackupDir: '',
   lastAutoBackupAt: '',
