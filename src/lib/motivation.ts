@@ -1,3 +1,5 @@
+import type { UI_ICONS } from '@/constants/icons';
+
 import { getEntry, isComplete, isDueOn, isSlip } from './schedule';
 import { computeStats } from './streaks';
 import type { EntryIndex, Habit } from './types';
@@ -36,7 +38,7 @@ function unitLabel(n: number, unit: 'days' | 'weeks') {
 }
 
 export interface Encouragement {
-  emoji: string;
+  icon: keyof typeof UI_ICONS;
   title: string;
   body: string;
 }
@@ -44,7 +46,7 @@ export interface Encouragement {
 /** One short, specific message about where you stand today. */
 export function encouragement(habits: Habit[], index: EntryIndex, today: string): Encouragement {
   const info = streakInfo(habits, index, today);
-  if (info.length === 0) return { emoji: '🌱', title: 'Start a habit', body: 'Add your first habit to begin a streak.' };
+  if (info.length === 0) return { icon: 'spa', title: 'Start a habit', body: 'Add your first habit to begin a streak.' };
 
   const due = info.filter((i) => i.dueToday && i.habit.kind !== 'avoid');
   const pending = due.filter((i) => !i.doneToday);
@@ -55,15 +57,15 @@ export function encouragement(habits: Habit[], index: EntryIndex, today: string)
 
   if (milestone) {
     return {
-      emoji: '🏆',
+      icon: 'trophy',
       title: `${unitLabel(milestone.current, milestone.unit)} streak!`,
-      body: `${milestone.habit.emoji} ${milestone.habit.name}: that's a milestone. Keep going.`,
+      body: `${milestone.habit.name}: that's a milestone. Keep going.`,
     };
   }
   if (due.length > 0 && pending.length === 0) {
     const best = [...info].sort((a, b) => b.current - a.current)[0];
     return {
-      emoji: '🎉',
+      icon: 'celebration',
       title: 'All done today',
       body: best && best.current > 1 ? `Streaks are safe. Longest: ${best.habit.name}, ${best.current} ${best.unit}.` : 'Every habit is checked off. Nice work.',
     };
@@ -72,22 +74,22 @@ export function encouragement(habits: Habit[], index: EntryIndex, today: string)
     const top = atRisk[0];
     const more = atRisk.length > 1 ? ` (+${atRisk.length - 1} more)` : '';
     return {
-      emoji: '🔥',
+      icon: 'streak',
       title: `Keep your ${unitLabel(top.current, top.unit)} streak`,
-      body: `${top.habit.emoji} ${top.habit.name} isn't done yet today${more}.`,
+      body: `${top.habit.name} isn't done yet today${more}.`,
     };
   }
   if (pending.length > 0) {
     const doneCount = due.length - pending.length;
     return {
-      emoji: '💪',
+      icon: 'trending_up',
       title: doneCount ? `${doneCount} of ${due.length} done` : 'Fresh start',
       body: doneCount ? `${pending.length} to go. You've got this.` : 'One check-off starts a new streak.',
     };
   }
   const clean = info.filter((i) => i.habit.kind === 'avoid').sort((a, b) => b.current - a.current)[0];
   if (clean && clean.current > 0) {
-    return { emoji: '🛡️', title: `${clean.current} days clean`, body: `${clean.habit.emoji} ${clean.habit.name}. Stay strong.` };
+    return { icon: 'shield', title: `${clean.current} days clean`, body: `${clean.habit.name}. Stay strong.` };
   }
-  return { emoji: '😌', title: 'Nothing due today', body: 'Enjoy the rest day.' };
+  return { icon: 'spa', title: 'Nothing due today', body: 'Enjoy the rest day.' };
 }

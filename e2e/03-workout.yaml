@@ -12,9 +12,9 @@ appId: com.saifeddine.habittracker
     text: "Start empty workout"
     retryTapIfNoChange: false
 - extendedWaitUntil:
-    visible: "+ Add exercise"
+    visible: "Add exercise"
     timeout: 3000
-- tapOn: "+ Add exercise"
+- tapOn: "Add exercise"
 - takeScreenshot: shots/31-exercise-picker
 - inputText: "Squat"
 - tapOn:

@@ -22,7 +22,7 @@ async function schedule() {
   const seconds = Math.max(1, Math.round((endsAt - Date.now()) / 1000));
   await Notifications.scheduleNotificationAsync({
     identifier: NOTIF_ID,
-    content: { title: '⏱️ Rest is over', body: 'Time for the next set.', sound: true },
+    content: { title: 'Rest is over', body: 'Time for the next set.', sound: true },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds, channelId: CHANNEL_ID },
   }).catch(() => {});
 }

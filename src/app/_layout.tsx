@@ -33,7 +33,7 @@ export default function RootLayout() {
       <StoreProvider>
         <HideSplashWhenReady />
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-        <Stack>
+        <Stack screenOptions={{ headerShadowVisible: false, headerTitleStyle: { fontWeight: '700' } }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="habit/edit" options={{ presentation: 'modal', title: 'Habit' }} />
           <Stack.Screen name="habit/[id]" options={{ title: '' }} />

@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { ExercisePicker } from '@/components/exercise-picker';
-import { Body, Button, Card, Input, Label } from '@/components/ui';
+import { Body, Button, Card, IconButton, Input, Label } from '@/components/ui';
 import { useColors } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { useWorkoutActions } from '@/data/workout-actions';
@@ -39,18 +39,12 @@ export default function TemplateScreen() {
         {t.exerciseIds.map((eid, i) => (
           <View key={eid} style={[s.row, { borderColor: c.border }]}>
             <Text style={{ color: c.text, fontSize: 16, flex: 1 }}>{exName.get(eid) ?? '?'}</Text>
-            <Pressable onPress={() => move(i, -1)} hitSlop={8} style={s.icon}>
-              <Text style={{ color: c.textSecondary, fontSize: 18 }}>↑</Text>
-            </Pressable>
-            <Pressable onPress={() => move(i, 1)} hitSlop={8} style={s.icon}>
-              <Text style={{ color: c.textSecondary, fontSize: 18 }}>↓</Text>
-            </Pressable>
-            <Pressable onPress={() => saveTemplate({ ...t, exerciseIds: t.exerciseIds.filter((x) => x !== eid) })} hitSlop={8} style={s.icon}>
-              <Text style={{ color: c.danger, fontSize: 18 }}>✕</Text>
-            </Pressable>
+            <IconButton icon="arrow_upward" label="Move up" color={c.textSecondary} onPress={() => move(i, -1)} disabled={i === 0} />
+            <IconButton icon="arrow_downward" label="Move down" color={c.textSecondary} onPress={() => move(i, 1)} disabled={i === t.exerciseIds.length - 1} />
+            <IconButton icon="close" label="Remove exercise" color={c.danger} onPress={() => saveTemplate({ ...t, exerciseIds: t.exerciseIds.filter((x) => x !== eid) })} />
           </View>
         ))}
-        <Button title="+ Add exercise" kind="secondary" style={{ marginTop: 10 }} onPress={() => setPicking(true)} />
+        <Button title="Add exercise" icon="add" kind="secondary" style={{ marginTop: 10 }} onPress={() => setPicking(true)} />
       </Card>
       <Button
         title="Start this workout"
@@ -92,5 +86,4 @@ export default function TemplateScreen() {
 const s = StyleSheet.create({
   content: { padding: 16, gap: 14, paddingBottom: 48 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  icon: { paddingHorizontal: 8 },
 });

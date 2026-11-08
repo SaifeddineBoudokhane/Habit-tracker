@@ -1,16 +1,23 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { FormScreen } from '@/components/form-screen';
-
+import { Icon } from '@/components/icon';
 import { TimeField } from '@/components/time-field';
-import { Body, Button, Card, Chip, Input, Label, NumberInput, Segmented } from '@/components/ui';
-import { EMOJI_SUGGESTIONS, HABIT_COLORS, guessEmoji, isHexColor, useColors } from '@/constants/theme';
+import { Body, Button, Card, Chip, HabitIconTile, IconButton, Input, Label, NumberInput, Segmented } from '@/components/ui';
+import { HABIT_ICONS } from '@/constants/icons';
+import { HABIT_COLORS, isHexColor, radius, tint, useColors } from '@/constants/theme';
+import { DEFAULT_HABIT_ICON, HABIT_ICON_NAMES, guessIcon, habitIcon, type HabitIconName } from '@/lib/habit-icon';
 import { newId, useStore } from '@/data/store';
 import { getWeekStartDay, weekdayShort } from '@/lib/dates';
 import type { Habit, HabitGroup, HabitKind, Reminder, Schedule, Weekday } from '@/lib/types';
 import { ensurePermission } from '@/notifications/scheduler';
+
+/** Indexes into HABIT_COLORS: blue, emerald, orange, purple, rose, cyan, amber, indigo, teal, pink. */
+const DEFAULT_COLOR_ORDER = [7, 11, 16, 4, 1, 9, 15, 6, 10, 2];
+/** Icons shown before "show all": two rows, the last cell is the toggle. */
+const ICONS_COLLAPSED = 11;
 
 const KIND_OPTIONS: { value: HabitKind; label: string }[] = [
   { value: 'check', label: 'Yes / No' },
@@ -49,10 +56,13 @@ export default function EditHabitScreen() {
   const existing = habits.find((h) => h.id === id);
 
   const [name, setName] = useState(existing?.name ?? '');
-  const [emoji, setEmoji] = useState(existing?.emoji ?? '✅');
-  // Until you pick an emoji yourself, it follows the name (Water -> 💧).
-  const [emojiPicked, setEmojiPicked] = useState(!!existing);
-  const [color, setColor] = useState(existing?.color ?? HABIT_COLORS[7]);
+  const [icon, setIcon] = useState<HabitIconName>(existing ? habitIcon(existing) : DEFAULT_HABIT_ICON);
+  // Until you pick an icon yourself, it follows the name (Water -> drop).
+  const [iconPicked, setIconPicked] = useState(!!existing);
+  // New habits get the next color in a spread-out order (until you pick one), so Today isn't all one color.
+  const [pickedColor, setColor] = useState<string | null>(existing?.color ?? null);
+  const color = pickedColor ?? HABIT_COLORS[DEFAULT_COLOR_ORDER[habits.length % DEFAULT_COLOR_ORDER.length]];
+  const [allIcons, setAllIcons] = useState(false);
   const [customColor, setCustomColor] = useState(
     existing && !HABIT_COLORS.includes(existing.color) ? existing.color : '',
   );
@@ -93,7 +103,8 @@ export default function EditHabitScreen() {
     const habit: Habit = {
       id: existing?.id ?? newId(),
       name: name.trim(),
-      emoji: emoji.trim() || '✅',
+      icon,
+      emoji: existing?.emoji ?? '',
       color,
       kind,
       target: kind === 'count' || kind === 'duration' ? Math.max(1, target) : 1,
@@ -126,45 +137,56 @@ export default function EditHabitScreen() {
     <FormScreen footer={<Button title={existing ? 'Save changes' : 'Create habit'} onPress={save} />}>
       <Card>
         <Label>Name</Label>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Input
-            value={emoji}
-            onChangeText={(t) => {
-              setEmoji(t);
-              setEmojiPicked(true);
-            }}
-            style={{ width: 56, textAlign: 'center', fontSize: 22 }}
-            maxLength={4}
-          />
+        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+          <HabitIconTile icon={icon} color={color} size={48} />
           <Input
             value={name}
             onChangeText={(t) => {
               setName(t);
-              if (!emojiPicked) setEmoji(guessEmoji(t) ?? '✅');
+              if (!iconPicked) setIcon(guessIcon(t) ?? DEFAULT_HABIT_ICON);
             }}
             placeholder="e.g. Workout"
             style={{ flex: 1 }}
             autoFocus={!existing}
           />
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          style={{ marginTop: 12 }}
-          contentContainerStyle={{ gap: 6 }}>
-          {EMOJI_SUGGESTIONS.map((e) => (
-            <Pressable
-              key={e}
-              onPress={() => {
-                setEmoji(e);
-                setEmojiPicked(true);
-              }}
-              style={[s.emoji, { backgroundColor: emoji === e ? c.muted : 'transparent' }]}>
-              <Text style={{ fontSize: 22 }}>{e}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+      </Card>
+
+      <Card>
+        <Label>Icon</Label>
+        <View style={s.iconGrid}>
+          {(allIcons
+            ? HABIT_ICON_NAMES
+            : [...new Set([icon, ...HABIT_ICON_NAMES.filter((n) => n !== DEFAULT_HABIT_ICON)])].slice(0, ICONS_COLLAPSED)
+          ).map((name) => {
+            const selected = icon === name;
+            return (
+              <Pressable
+                key={name}
+                onPress={() => {
+                  setIcon(name);
+                  setIconPicked(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={HABIT_ICONS[name].label}
+                accessibilityState={{ selected }}
+                style={({ pressed }) => [
+                  s.iconCell,
+                  { backgroundColor: selected ? tint(color, 0.18) : pressed ? c.muted : 'transparent' },
+                  selected && { borderColor: color },
+                ]}>
+                <Icon habit={name} size={24} color={selected ? color : c.textSecondary} />
+              </Pressable>
+            );
+          })}
+          <Pressable
+            onPress={() => setAllIcons((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={allIcons ? 'Show fewer icons' : 'Show all icons'}
+            style={({ pressed }) => [s.iconCell, { backgroundColor: pressed ? c.border : c.muted }]}>
+            <Icon name={allIcons ? 'close' : 'keyboard_arrow_down'} size={24} color={c.text} />
+          </Pressable>
+        </View>
       </Card>
 
       <Card>
@@ -234,18 +256,7 @@ export default function EditHabitScreen() {
 
       <Card>
         <Label>Color</Label>
-        <View style={[s.preview, { backgroundColor: c.muted }]}>
-          <View style={[s.previewIcon, { backgroundColor: color + '26' }]}>
-            <Text style={{ fontSize: 22 }}>{emoji || '✅'}</Text>
-          </View>
-          <Text style={{ color: c.text, fontSize: 16, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-            {name || 'Habit name'}
-          </Text>
-          <View style={[s.previewCheck, { backgroundColor: color, borderColor: color }]}>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 18 }}>✓</Text>
-          </View>
-        </View>
-        <View style={[s.row, { marginTop: 12 }]}>
+        <View style={s.row}>
           {HABIT_COLORS.map((col) => (
             <Pressable
               key={col}
@@ -254,6 +265,9 @@ export default function EditHabitScreen() {
                 setCustomColor('');
               }}
               hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={`Color ${col}`}
+              accessibilityState={{ selected: color === col }}
               style={[
                 s.swatch,
                 {
@@ -261,7 +275,7 @@ export default function EditHabitScreen() {
                   borderColor: color === col ? c.text : 'transparent',
                 },
               ]}>
-              {color === col && <Text style={s.swatchTick}>✓</Text>}
+              {color === col && <Icon name="check" size={18} color="#fff" />}
             </Pressable>
           ))}
         </View>
@@ -321,22 +335,24 @@ export default function EditHabitScreen() {
                 </View>
               </View>
             )}
-            <Pressable
+            <IconButton
+              icon="delete"
+              label="Remove reminder"
+              color={c.danger}
               onPress={() => setReminders((rs) => rs.filter((x) => x.id !== r.id))}
-              hitSlop={10}
-              style={{ padding: 6 }}>
-              <Text style={{ color: c.danger, fontSize: 18 }}>✕</Text>
-            </Pressable>
+            />
           </View>
         ))}
         <View style={[s.row, { marginTop: 12 }]}>
           <Button
-            title="+ At a time"
+            title="At a time"
+            icon="schedule"
             kind="secondary"
             onPress={() => setReminders((rs) => [...rs, { id: newId(), kind: 'fixed', time: '08:00' }])}
           />
           <Button
-            title="+ Repeating"
+            title="Repeating"
+            icon="event_repeat"
             kind="secondary"
             onPress={() =>
               setReminders((rs) => [
@@ -368,10 +384,14 @@ const s = StyleSheet.create({
     gap: 10,
     flexWrap: 'wrap',
   },
-  emoji: {
-    width: 42,
-    height: 42,
-    borderRadius: 10,
+  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  iconCell: {
+    width: 46,
+    height: 46,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
+    borderWidth: 2,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -380,29 +400,6 @@ const s = StyleSheet.create({
     height: 34,
     borderRadius: 17,
     borderWidth: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  swatchTick: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  preview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 10,
-    borderRadius: 14,
-  },
-  previewIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewCheck: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -5,12 +5,13 @@ import * as Notifications from 'expo-notifications';
 import * as Sharing from 'expo-sharing';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Linking, Platform, StyleSheet, Switch, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { canUseAppLock, confirmIdentity } from '@/components/app-lock';
 import { TimeField } from '@/components/time-field';
-import { Body, Button, Card, Chip, Label, NumberInput, Segmented } from '@/components/ui';
+import { Icon } from '@/components/icon';
+import { Body, Button, Card, Chip, Label, NavRow, NumberInput, Segmented } from '@/components/ui';
 import { useColors } from '@/constants/theme';
 import { folderLabel, pickBackupFolder } from '@/data/auto-backup';
 import type { WipeKind } from '@/data/db';
@@ -99,7 +100,7 @@ export default function SettingsScreen() {
   const testNotification = async () => {
     if (!(await ensurePermission(true))) return setPermission(false);
     await Notifications.scheduleNotificationAsync({
-      content: { title: '🔔 Test reminder', body: 'Reminders are working.' },
+      content: { title: 'Test reminder', body: 'Reminders are working.' },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: CHANNEL_ID },
     });
   };
@@ -168,15 +169,7 @@ export default function SettingsScreen() {
   return (
     <KeyboardAwareScrollView bottomOffset={24} style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       {Platform.OS === 'android' && (
-        <Pressable onPress={() => router.push('/widgets')}>
-          <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: c.text, fontSize: 16, fontWeight: '600' }}>🧩 Home-screen widgets</Text>
-              <Body muted style={{ fontSize: 13 }}>Preview and add widgets</Body>
-            </View>
-            <Text style={{ color: c.textSecondary, fontSize: 22 }}>›</Text>
-          </Card>
-        </Pressable>
+        <NavRow icon="widgets" title="Home-screen widgets" subtitle="Preview and add widgets" onPress={() => router.push('/widgets')} />
       )}
 
       <Card>
@@ -244,7 +237,7 @@ export default function SettingsScreen() {
             .map((h) => (
               <Chip
                 key={h.id}
-                label={`${h.emoji} ${h.name}`}
+                label={h.name}
                 selected={settings.workoutHabitId === h.id}
                 onPress={() => updateSettings({ workoutHabitId: h.id })}
               />
@@ -298,7 +291,10 @@ export default function SettingsScreen() {
         </Body>
         {settings.autoBackupDir ? (
           <View style={{ gap: 6 }}>
-            <Body>📁 {folderLabel(settings.autoBackupDir)}</Body>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Icon name="folder" size={18} color={c.textSecondary} />
+              <Body>{folderLabel(settings.autoBackupDir)}</Body>
+            </View>
             {settings.autoBackupError ? (
               <Body style={{ color: c.danger }}>Last backup failed: {settings.autoBackupError}</Body>
             ) : (

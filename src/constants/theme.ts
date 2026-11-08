@@ -1,29 +1,35 @@
 import { useColorScheme } from 'react-native';
 
+import type { TextStyle } from 'react-native';
+
+/**
+ * Quiet chrome so each habit's own color carries the screen.
+ * Surfaces are separated by tone, not outlines: background < card, muted = wells inside a card.
+ */
 export const Colors = {
   light: {
-    text: '#111214',
-    textSecondary: '#62666d',
-    background: '#f4f5f7',
+    text: '#16181c',
+    textSecondary: '#5d636c',
+    background: '#f1f2f4',
     card: '#ffffff',
-    border: '#e3e5e8',
-    accent: '#2563eb',
+    border: '#e1e3e7',
+    accent: '#3157e0',
     accentText: '#ffffff',
-    danger: '#dc2626',
-    success: '#16a34a',
-    muted: '#eceef1',
+    danger: '#d23b3b',
+    success: '#1f9d57',
+    muted: '#eaecef',
   },
   dark: {
-    text: '#f2f3f5',
-    textSecondary: '#a0a4ab',
-    background: '#0d0e10',
-    card: '#1a1b1f',
-    border: '#2a2c31',
-    accent: '#4f8bff',
-    accentText: '#ffffff',
-    danger: '#f87171',
-    success: '#4ade80',
-    muted: '#26282d',
+    text: '#eef0f3',
+    textSecondary: '#9aa1ab',
+    background: '#0f1114',
+    card: '#1a1d21',
+    border: '#2b2f35',
+    accent: '#8aa4ff',
+    accentText: '#0d1630',
+    danger: '#f27b7b',
+    success: '#4cc985',
+    muted: '#262a30',
   },
 };
 
@@ -33,7 +39,6 @@ export function useColors(): Palette {
   return useColorScheme() === 'dark' ? Colors.dark : Colors.light;
 }
 
-/** Habit colors to pick from. */
 /** Habit colors to pick from (any #RRGGBB can also be typed in). */
 export const HABIT_COLORS = [
   '#ef4444', // red
@@ -60,34 +65,22 @@ export const HABIT_COLORS = [
 
 export const isHexColor = (c: string) => /^#[0-9a-f]{6}$/i.test(c);
 
-/** Best-guess emoji for a habit name (used until you pick one yourself). */
-const EMOJI_RULES: [RegExp, string][] = [
-  [/water|drink|hydrat/i, '💧'],
-  [/read|book/i, '📖'],
-  [/run|jog/i, '🏃'],
-  [/walk|steps/i, '🚶'],
-  [/gym|workout|lift|push.?up|pull.?up|squat|train|exercise/i, '💪'],
-  [/meditat|breath|mindful/i, '🧘'],
-  [/sleep|bed/i, '😴'],
-  [/teeth|floss/i, '🦷'],
-  [/vitamin|pill|medic/i, '💊'],
-  [/smok|cigar/i, '🚭'],
-  [/sugar|sweet|candy/i, '🍬'],
-  [/phone|social|scroll|screen/i, '📵'],
-  [/write|journal/i, '✍️'],
-  [/guitar|piano|music|practice/i, '🎸'],
-  [/clean|tidy/i, '🧹'],
-  [/eat|veg|fruit|diet|salad/i, '🥗'],
-  [/bike|cycl/i, '🚴'],
-  [/swim/i, '🏊'],
-  [/stretch|yoga/i, '🤸'],
-  [/study|learn|course/i, '🎓'],
-  [/pray/i, '🤲'],
-];
+/** 4-point spacing scale. Row gap < group gap < section gap. */
+export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 
-export function guessEmoji(name: string): string | null {
-  for (const [re, e] of EMOJI_RULES) if (re.test(name)) return e;
-  return null;
-}
+export const radius = { sm: 10, md: 14, lg: 20, full: 999 } as const;
 
-export const EMOJI_SUGGESTIONS = ['💪', '🏃', '💧', '📖', '🧘', '🥗', '😴', '🦷', '💊', '🚭', '🍬', '📵', '✍️', '🎸', '🧹', '🚶'];
+/** Text styles (system font). Colors are applied by the caller from the palette. */
+export const type = {
+  title: { fontSize: 24, fontWeight: '700', letterSpacing: -0.3 },
+  headline: { fontSize: 17, fontWeight: '600' },
+  body: { fontSize: 15, fontWeight: '400' },
+  rowTitle: { fontSize: 16, fontWeight: '600' },
+  subhead: { fontSize: 13, fontWeight: '400' },
+  section: { fontSize: 14, fontWeight: '600' },
+  caption: { fontSize: 12, fontWeight: '500' },
+} as const satisfies Record<string, TextStyle>;
+
+/** A habit color at low opacity, for icon tiles and soft fills. */
+export const tint = (hex: string, alpha = 0.16) =>
+  hex + Math.round(alpha * 255).toString(16).padStart(2, '0');

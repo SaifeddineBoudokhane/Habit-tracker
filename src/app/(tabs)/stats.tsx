@@ -2,11 +2,13 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { GoalCard } from '@/components/goal-card';
-import { Body, Card, Label } from '@/components/ui';
+import { Icon } from '@/components/icon';
+import { Body, Card, HabitIconTile, Label } from '@/components/ui';
 import { useColors } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { addDays, weekStart } from '@/lib/dates';
 import { goalProgress } from '@/lib/goals';
+import { habitIcon } from '@/lib/habit-icon';
 import { periodRate } from '@/lib/stats';
 import { computeStats } from '@/lib/streaks';
 import { summarize } from '@/lib/workouts';
@@ -62,7 +64,14 @@ export default function StatsScreen() {
         {activeGoals.map((g) => (
           <GoalCard key={g.id} goal={g} habit={habitById.get(g.habitId)!} showHabit />
         ))}
-        {reached > 0 && <Body muted style={{ marginTop: 6, fontSize: 13 }}>🏆 {reached} past goal{reached === 1 ? '' : 's'} reached</Body>}
+        {reached > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+            <Icon name="trophy" size={16} color="#eab308" />
+            <Body muted style={{ fontSize: 13 }}>
+              {reached} past goal{reached === 1 ? '' : 's'} reached
+            </Body>
+          </View>
+        )}
       </Card>
 
       <Card>
@@ -71,16 +80,21 @@ export default function StatsScreen() {
           <Text style={[s.name, { color: c.textSecondary, fontSize: 12 }]}>Habit</Text>
           <Text style={[s.num, { color: c.textSecondary, fontSize: 12 }]} numberOfLines={1}>7d</Text>
           <Text style={[s.num, { color: c.textSecondary, fontSize: 12 }]} numberOfLines={1}>30d</Text>
-          <Text style={[s.num, { color: c.textSecondary, fontSize: 12 }]} numberOfLines={1}>🔥</Text>
+          <View style={[s.num, { alignItems: 'flex-end' }]}>
+            <Icon name="streak" size={16} color={c.textSecondary} />
+          </View>
         </View>
-        {rows.map(({ habit, d7, d30, streak }) => (
+        {rows.map(({ habit, d7, d30, streak }, i) => (
           <Pressable
             key={habit.id}
             onPress={() => router.push({ pathname: '/habit/[id]', params: { id: habit.id } })}
-            style={[s.row, { borderColor: c.border }]}>
-            <Text style={[s.name, { color: c.text }]} numberOfLines={1}>
-              {habit.emoji} {habit.name}
-            </Text>
+            style={[s.row, { borderColor: c.border }, i === rows.length - 1 && { borderBottomWidth: 0 }]}>
+            <View style={[s.name, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
+              <HabitIconTile icon={habitIcon(habit)} color={habit.color} size={28} />
+              <Text style={{ color: c.text, fontSize: 15, flex: 1 }} numberOfLines={1}>
+                {habit.name}
+              </Text>
+            </View>
             <Text style={[s.num, { color: c.text }]}>{pct(d7)}</Text>
             <Text style={[s.num, { color: c.text }]}>{pct(d30)}</Text>
             <Text style={[s.num, { color: c.text }]}>
@@ -107,7 +121,7 @@ function Big({ value, label }: { value: string; label: string }) {
   const c = useColors();
   return (
     <View style={{ alignItems: 'center', flex: 1 }}>
-      <Text style={{ color: c.text, fontSize: 22, fontWeight: '700' }}>{value}</Text>
+      <Text style={{ color: c.text, fontSize: 24, fontWeight: '700', fontVariant: ['tabular-nums'] }}>{value}</Text>
       <Text style={{ color: c.textSecondary, fontSize: 12 }}>{label}</Text>
     </View>
   );

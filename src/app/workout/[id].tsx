@@ -6,7 +6,8 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { DateField } from '@/components/date-field';
 import { ExercisePicker } from '@/components/exercise-picker';
 import { RestTimerBar } from '@/components/rest-timer-bar';
-import { Body, Button, Card, DecimalInput, Input } from '@/components/ui';
+import { Icon } from '@/components/icon';
+import { Body, Button, Card, DecimalInput, IconButton, Input } from '@/components/ui';
 import { useColors } from '@/constants/theme';
 import { restTimer } from '@/data/rest-timer';
 import { newId, useStore } from '@/data/store';
@@ -33,7 +34,7 @@ export default function WorkoutScreen() {
   }, [active]);
 
   useLayoutEffect(() => {
-    nav.setOptions({ title: active ? `⏱ ${formatDuration((now - (workout?.startedAt ?? now)) / 1000)}` : 'Workout' });
+    nav.setOptions({ title: active ? formatDuration((now - (workout?.startedAt ?? now)) / 1000) : 'Workout' });
   }, [nav, active, now, workout?.startedAt]);
 
   if (!workout) return <View style={{ flex: 1, backgroundColor: c.background }} />;
@@ -138,7 +139,7 @@ export default function WorkoutScreen() {
           );
         })}
 
-        <Button title="+ Add exercise" kind="secondary" onPress={() => setPicking(true)} />
+        <Button title="Add exercise" icon="add" kind="secondary" onPress={() => setPicking(true)} />
         <Input value={workout.note} onChangeText={(note) => update({ note })} placeholder="Workout note (optional)" multiline />
         {active && <Button title="Finish workout" onPress={finish} />}
         <Button title={active ? 'Discard workout' : 'Delete workout'} kind="danger" onPress={discard} />
@@ -185,9 +186,7 @@ function ExerciseBlock({
         <Pressable onPress={() => router.push({ pathname: '/exercise/[id]', params: { id: exercise.id } })} style={{ flex: 1 }}>
           <Text style={{ color: c.accent, fontSize: 17, fontWeight: '700' }}>{exercise.name}</Text>
         </Pressable>
-        <Pressable onPress={onRemove} hitSlop={10}>
-          <Text style={{ color: c.textSecondary, fontSize: 18 }}>✕</Text>
-        </Pressable>
+        <IconButton icon="close" label={`Remove ${exercise.name}`} color={c.textSecondary} onPress={onRemove} size={36} />
       </View>
       <View style={s.setRow}>
         <Text style={[s.colSet, s.head, { color: c.textSecondary }]}>Set</Text>
@@ -197,7 +196,9 @@ function ExerciseBlock({
             {header[k]}
           </Text>
         ))}
-        <Text style={[s.colDone, s.head, { color: c.textSecondary }]}>✓</Text>
+        <View style={[s.colDone, { alignItems: 'center' }]}>
+          <Icon name="check" size={16} color={c.textSecondary} />
+        </View>
       </View>
       {sets.map((st, i) => (
         <Pressable
@@ -235,12 +236,13 @@ function ExerciseBlock({
             hitSlop={6}
             testID={`set-done-${i}`}
             style={[s.colDone, s.check, { borderColor: st.done ? c.success : c.border, backgroundColor: st.done ? c.success : 'transparent' }]}>
-            <Text style={{ color: '#fff', fontWeight: '700' }}>{st.done ? '✓' : ''}</Text>
+            {st.done && <Icon name="check" size={18} color="#fff" />}
           </Pressable>
         </Pressable>
       ))}
-      <Pressable onPress={onAddSet} style={{ paddingVertical: 8, alignItems: 'center' }}>
-        <Text style={{ color: c.accent, fontWeight: '600' }}>+ Add set</Text>
+      <Pressable onPress={onAddSet} accessibilityRole="button" style={{ paddingVertical: 8, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
+        <Icon name="add" size={18} color={c.accent} />
+        <Text style={{ color: c.accent, fontWeight: '600' }}>Add set</Text>
       </Pressable>
       {workout.finishedAt === null && sets.length > 0 && (
         <Text style={{ color: c.textSecondary, fontSize: 11, textAlign: 'center' }}>Long-press a set to delete it</Text>

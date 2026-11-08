@@ -17,9 +17,9 @@ export function GoalCard({ goal, habit, showHabit }: { goal: Goal; habit: Habit;
 
   const statusText = {
     upcoming: `Starts ${prettyDate(goal.start, today)}`,
-    done: 'Goal reached 🎉',
-    ahead: `On track · ${p.daysLeft} days left`,
-    behind: `Behind · need ${fmt(Math.ceil(p.neededPerDay * 10) / 10)}/${goal.metric === 'days' ? 'day' : 'day'} · ${p.daysLeft} days left`,
+    done: 'Goal reached',
+    ahead: `On track, ${p.daysLeft} days left`,
+    behind: `Behind: need ${fmt(Math.ceil(p.neededPerDay * 10) / 10)}/day, ${p.daysLeft} days left`,
     failed: 'Ended',
   }[p.status];
   const statusColor = p.status === 'done' || p.status === 'ahead' ? c.success : p.status === 'behind' ? c.danger : c.textSecondary;
@@ -30,7 +30,7 @@ export function GoalCard({ goal, habit, showHabit }: { goal: Goal; habit: Habit;
       style={{ gap: 6, paddingVertical: 6 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <Text style={{ color: c.text, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-          {showHabit ? `${habit.emoji} ` : ''}
+          {showHabit ? `${habit.name}: ` : ''}
           {fmt(goal.target)} {unit} by {prettyDate(goal.end, today)}
         </Text>
         <Text style={{ color: c.text, fontWeight: '700' }}>
@@ -53,7 +53,7 @@ export function GoalCard({ goal, habit, showHabit }: { goal: Goal; habit: Habit;
       </View>
       <Text style={{ color: statusColor, fontSize: 12 }}>
         {statusText}
-        {p.projected && p.status !== 'failed' ? ` · at this pace: ${prettyDate(p.projected, today)}` : ''}
+        {p.projected && p.status !== 'failed' ? `. At this pace: ${prettyDate(p.projected, today)}` : ''}
       </Text>
     </Pressable>
   );

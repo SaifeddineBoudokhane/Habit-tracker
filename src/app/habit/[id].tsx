@@ -7,7 +7,9 @@ import { EntryEditor } from '@/components/entry-editor';
 import { GoalCard } from '@/components/goal-card';
 import { WeekdayBars } from '@/components/weekday-bars';
 import { YearHeatmap } from '@/components/year-heatmap';
-import { Body, Button, Card, Label } from '@/components/ui';
+import { Icon, type UiIconName } from '@/components/icon';
+import { Body, Button, Card, HabitIconTile, IconButton, Label } from '@/components/ui';
+import { habitIcon } from '@/lib/habit-icon';
 import { useColors } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { addDays, fromKey, getWeekStartDay, monthLabel, prettyDate, toKey, weekStart, weekdayShort } from '@/lib/dates';
@@ -27,7 +29,7 @@ export default function HabitDetailScreen() {
 
   useLayoutEffect(() => {
     nav.setOptions({
-      title: habit ? `${habit.emoji} ${habit.name}` : '',
+      title: '',
       headerRight: () =>
         habit && (
           <Pressable onPress={() => router.push({ pathname: '/habit/edit', params: { id: habit.id } })} hitSlop={12}>
@@ -67,11 +69,30 @@ export default function HabitDetailScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <View style={s.hero}>
+        <HabitIconTile icon={habitIcon(habit)} color={habit.color} size={56} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: c.text, fontSize: 20, fontWeight: '700' }} numberOfLines={2}>
+            {habit.name}
+          </Text>
+          <Text style={{ color: c.textSecondary, fontSize: 14 }}>
+            {habit.kind === 'avoid' ? 'Avoid habit' : describeSchedule(habit)}
+            {habit.archived ? ', archived' : ''}
+          </Text>
+        </View>
+      </View>
       <View style={s.stats}>
-        <Stat label={habit.kind === 'avoid' ? 'Days clean' : `Streak (${unit})`} value={String(st.current)} />
-        <Stat label={`Best (${unit})`} value={String(st.best)} />
-        <Stat label="Last 30 days" value={st.rate30 === null ? '–' : `${Math.round(st.rate30 * 100)}%`} />
         <Stat
+          icon={habit.kind === 'avoid' ? 'shield-fill' : 'streak-fill'}
+          color={habit.kind === 'avoid' ? habit.color : '#f97316'}
+          label={habit.kind === 'avoid' ? 'Days clean' : `Current streak (${unit})`}
+          value={String(st.current)}
+        />
+        <Stat icon="trophy" color="#eab308" label={`Best streak (${unit})`} value={String(st.best)} />
+        <Stat icon="calendar_today" color={habit.color} label="Last 30 days" value={st.rate30 === null ? '–' : `${Math.round(st.rate30 * 100)}%`} />
+        <Stat
+          icon="check"
+          color={habit.color}
           label={habit.kind === 'avoid' ? 'Slips' : habit.kind === 'check' ? 'Times done' : `Total ${habit.unit}`}
           value={String(habit.kind === 'count' || habit.kind === 'duration' ? Math.round(st.totalValue) : st.totalDone)}
         />
@@ -106,7 +127,8 @@ export default function HabitDetailScreen() {
           <GoalCard key={g.id} goal={g} habit={habit} />
         ))}
         <Button
-          title="+ Add goal"
+          title="Add goal"
+          icon="flag"
           kind="secondary"
           style={{ marginTop: 10 }}
           onPress={() => router.push({ pathname: '/goal/edit', params: { habitId: habit.id } })}
@@ -139,16 +161,20 @@ export default function HabitDetailScreen() {
           </Body>
         )}
         {habit.reminders.map((r) => (
-          <Body key={r.id} muted>
-            🔔 {r.kind === 'fixed' ? `At ${r.time}` : `Every ${r.everyMin} min, ${r.start}–${r.end} (${reminderTimes(r).length}×/day)`}
-          </Body>
+          <View key={r.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <Icon name="notifications" size={16} color={c.textSecondary} />
+            <Body muted>
+              {r.kind === 'fixed' ? `At ${r.time}` : `Every ${r.everyMin} min, ${r.start}–${r.end} (${reminderTimes(r).length}×/day)`}
+            </Body>
+          </View>
         ))}
       </Card>
 
       <View style={{ gap: 10 }}>
         {Platform.OS === 'android' && !habit.archived && (
           <Button
-            title="➕ Add widget to home screen"
+            title="Add widget to home screen"
+            icon="widgets"
             kind="secondary"
             onPress={async () => {
               await updateSettings({ pendingWidgetHabit: habit.id });
@@ -163,10 +189,11 @@ export default function HabitDetailScreen() {
         )}
         <Button
           title={habit.archived ? 'Unarchive' : 'Archive (hide, keep history)'}
+          icon={habit.archived ? 'unarchive' : 'archive'}
           kind="secondary"
           onPress={() => saveHabit({ ...habit, archived: !habit.archived })}
         />
-        <Button title="Delete habit" kind="danger" onPress={confirmDelete} />
+        <Button title="Delete habit" icon="delete" kind="danger" onPress={confirmDelete} />
       </View>
 
       <EntryEditor habit={editingDate ? habit : null} date={editingDate ?? today} onClose={() => setEditingDate(null)} />
@@ -174,11 +201,14 @@ export default function HabitDetailScreen() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, icon, color }: { label: string; value: string; icon: UiIconName; color: string }) {
   const c = useColors();
   return (
-    <View style={[s.stat, { backgroundColor: c.card, borderColor: c.border }]}>
-      <Text style={{ color: c.text, fontSize: 24, fontWeight: '700' }}>{value}</Text>
+    <View style={[s.stat, { backgroundColor: c.card }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Icon name={icon} size={20} color={color} />
+        <Text style={{ color: c.text, fontSize: 24, fontWeight: '700', fontVariant: ['tabular-nums'] }}>{value}</Text>
+      </View>
       <Text style={{ color: c.textSecondary, fontSize: 12, marginTop: 2 }}>{label}</Text>
     </View>
   );
@@ -204,13 +234,9 @@ function MonthCalendar({ habit, onPick }: { habit: Habit; onPick: (date: string)
   return (
     <View>
       <View style={s.calHeader}>
-        <Pressable onPress={() => shiftMonth(-1)} hitSlop={12}>
-          <Text style={{ color: c.text, fontSize: 24 }}>‹</Text>
-        </Pressable>
+        <IconButton icon="chevron_left" label="Previous month" onPress={() => shiftMonth(-1)} />
         <Text style={{ color: c.text, fontWeight: '700', fontSize: 16 }}>{monthLabel(month)}</Text>
-        <Pressable onPress={() => shiftMonth(1)} hitSlop={12} disabled={month >= today.slice(0, 7) + '-01'}>
-          <Text style={{ color: month >= today.slice(0, 7) + '-01' ? c.border : c.text, fontSize: 24 }}>›</Text>
-        </Pressable>
+        <IconButton icon="chevron_right" label="Next month" onPress={() => shiftMonth(1)} disabled={month >= today.slice(0, 7) + '-01'} />
       </View>
       <View style={s.grid}>
         {weekHeader.map((d) => (
@@ -260,8 +286,9 @@ function MonthCalendar({ habit, onPick }: { habit: Habit; onPick: (date: string)
 
 const s = StyleSheet.create({
   content: { padding: 16, gap: 14, paddingBottom: 48 },
+  hero: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 2 },
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  stat: { flexBasis: '47%', flexGrow: 1, padding: 14, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth },
+  stat: { flexBasis: '47%', flexGrow: 1, padding: 14, borderRadius: 16, borderCurve: 'continuous' },
   calHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   headCell: { width: `${100 / 7}%`, textAlign: 'center', fontSize: 12, fontWeight: '600', paddingVertical: 4 },

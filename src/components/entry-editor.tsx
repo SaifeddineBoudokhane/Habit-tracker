@@ -92,13 +92,14 @@ function Sheet({ habit, date, onClose }: { habit: Habit; date: string; onClose: 
         {habit.kind === 'duration' && (
           <View style={{ marginBottom: 12 }}>
             {timer.startedAt === null ? (
-              <Button title="▶ Start timer" kind="secondary" onPress={() => {
+              <Button title="Start timer" icon="play_arrow" kind="secondary" onPress={() => {
                 timer.start();
                 onClose();
               }} />
             ) : (
               <Button
-                title={`■ Stop timer · ${formatDuration((now - timer.startedAt) / 1000)}`}
+                title={`Stop timer (${formatDuration((now - timer.startedAt) / 1000)})`}
+                icon="stop"
                 onPress={() => {
                   timer.stop();
                   onClose();

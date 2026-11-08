@@ -62,7 +62,7 @@
             {
               "name": "Today",
               "label": "Habits today",
-              "description": "Today's habits with progress. Tap a habit to log it.",
+              "description": "Tap a habit to log it. Stretch it taller for a checklist.",
               "minWidth": "250dp",
               "minHeight": "110dp",
               "targetCellWidth": 4,
@@ -75,7 +75,7 @@
             {
               "name": "Habit",
               "label": "Single habit",
-              "description": "One habit with a progress ring and streak. Tap to log it.",
+              "description": "One habit, one tap to log it.",
               "minWidth": "110dp",
               "minHeight": "110dp",
               "targetCellWidth": 2,
@@ -87,8 +87,8 @@
             },
             {
               "name": "Streaks",
-              "label": "Streaks & motivation",
-              "description": "Today's progress, your best streaks and a nudge to keep them going.",
+              "label": "Streaks",
+              "description": "Today's progress and the streaks you're protecting.",
               "minWidth": "250dp",
               "minHeight": "110dp",
               "targetCellWidth": 4,

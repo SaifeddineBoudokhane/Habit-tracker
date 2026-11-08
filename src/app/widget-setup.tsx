@@ -1,8 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Body, Button } from '@/components/ui';
-import { useColors } from '@/constants/theme';
+import { Icon } from '@/components/icon';
+import { Body, Button, HabitIconTile } from '@/components/ui';
+import { radius, useColors } from '@/constants/theme';
+import { habitIcon } from '@/lib/habit-icon';
 import { useStore } from '@/data/store';
 import { refreshWidgets } from '@/widget/handler';
 
@@ -29,7 +31,7 @@ export default function WidgetSetupScreen() {
       {active.length === 0 && (
         <View style={{ gap: 12 }}>
           <Body muted>You don’t have any habits yet. Create one first.</Body>
-          <Button title="Create a habit" onPress={() => router.replace('/habit/edit')} />
+          <Button title="Create a habit" icon="add" onPress={() => router.replace('/habit/edit')} />
         </View>
       )}
       {active.map((h) => (
@@ -38,13 +40,11 @@ export default function WidgetSetupScreen() {
           onPress={() => pick(h.id)}
           style={({ pressed }) => [
             s.item,
-            { backgroundColor: c.card, borderColor: current === h.id ? h.color : c.border, opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: pressed ? c.muted : c.card, borderColor: current === h.id ? h.color : 'transparent' },
           ]}>
-          <View style={[s.icon, { backgroundColor: h.color + '26' }]}>
-            <Text style={{ fontSize: 22 }}>{h.emoji}</Text>
-          </View>
-          <Text style={{ color: c.text, fontSize: 16, flex: 1 }}>{h.name}</Text>
-          {current === h.id && <Text style={{ color: h.color, fontWeight: '700' }}>Current</Text>}
+          <HabitIconTile icon={habitIcon(h)} color={h.color} />
+          <Text style={{ color: c.text, fontSize: 16, fontWeight: '600', flex: 1 }}>{h.name}</Text>
+          {current === h.id && <Icon name="today-fill" size={22} color={h.color} />}
         </Pressable>
       ))}
     </ScrollView>
@@ -54,6 +54,5 @@ export default function WidgetSetupScreen() {
 const s = StyleSheet.create({
   content: { padding: 16, gap: 10, paddingBottom: 48 },
   title: { fontSize: 20, fontWeight: '700', marginBottom: 6 },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1.5 },
-  icon: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radius.lg, borderCurve: 'continuous', borderWidth: 2 },
 });

@@ -55,16 +55,16 @@ export async function registerCategories(snoozeMinutes: number): Promise<void> {
   const snooze = { identifier: ACTION_SNOOZE, buttonTitle: `Snooze ${snoozeMinutes}m`, options: bg };
   await Promise.all([
     Notifications.setNotificationCategoryAsync('habit-check', [
-      { identifier: ACTION_DONE, buttonTitle: 'Done ✓', options: bg },
+      { identifier: ACTION_DONE, buttonTitle: 'Done', options: bg },
       snooze,
     ]),
     Notifications.setNotificationCategoryAsync('habit-count', [
       { identifier: ACTION_PLUS1, buttonTitle: '+1', options: bg },
-      { identifier: ACTION_DONE, buttonTitle: 'Done ✓', options: bg },
+      { identifier: ACTION_DONE, buttonTitle: 'Done', options: bg },
       snooze,
     ]),
     Notifications.setNotificationCategoryAsync('habit-duration', [
-      { identifier: ACTION_DONE, buttonTitle: 'Done ✓', options: bg },
+      { identifier: ACTION_DONE, buttonTitle: 'Done', options: bg },
       snooze,
     ]),
   ]);
@@ -81,14 +81,14 @@ export async function ensurePermission(ask: boolean): Promise<boolean> {
 function contentFor(habit: Habit, date: string, snoozed = false): Notifications.NotificationContentInput {
   const body =
     habit.kind === 'avoid'
-      ? 'Stay strong 💪'
+      ? 'Stay strong'
       : habit.kind === 'count'
         ? `Goal: ${habit.target} ${habit.unit}`.trim()
         : habit.kind === 'duration'
           ? `Goal: ${habit.target} min`
           : 'Time to do it';
   return {
-    title: `${habit.emoji} ${habit.name}`,
+    title: habit.name,
     body: snoozed ? `${body} (snoozed)` : body,
     data: { habitId: habit.id, date },
     categoryIdentifier: habit.kind === 'avoid' ? undefined : `habit-${habit.kind}`,

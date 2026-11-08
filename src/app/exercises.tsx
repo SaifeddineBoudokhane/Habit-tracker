@@ -25,7 +25,7 @@ export default function ExercisesScreen() {
         keyboardShouldPersistTaps="handled"
         data={list}
         keyExtractor={(e) => e.id}
-        ListHeaderComponent={<Button title="+ New exercise" kind="secondary" style={{ margin: 16 }} onPress={() => setAdding(true)} />}
+        ListHeaderComponent={<Button title="New exercise" icon="add" kind="secondary" style={{ margin: 16 }} onPress={() => setAdding(true)} />}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/exercise/[id]', params: { id: item.id } })}

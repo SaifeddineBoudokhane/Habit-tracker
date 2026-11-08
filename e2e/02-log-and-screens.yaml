@@ -37,7 +37,7 @@ appId: com.saifeddine.habittracker
 - takeScreenshot: shots/11-today-water-3
 # Minus button
 - tapOn:
-    text: "−"
+    text: "Minus 1"
     retryTapIfNoChange: false
 - extendedWaitUntil:
     visible: "2 / 8"

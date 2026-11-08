@@ -20,6 +20,9 @@ export interface Habit {
   /** Section on the Today screen. Missing = 'anytime'. */
   group?: HabitGroup;
   name: string;
+  /** Material icon key (see HABIT_ICONS). Missing on habits made before icons: derived from emoji/name. */
+  icon?: string;
+  /** Legacy emoji, kept so old backups and habits still map to an icon. */
   emoji: string;
   color: string;
   kind: HabitKind;

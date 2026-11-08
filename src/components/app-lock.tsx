@@ -5,6 +5,7 @@ import { AppState, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/constants/theme';
 import { useStore } from '@/data/store';
 
+import { Icon } from './icon';
 import { Button } from './ui';
 
 /** Re-lock after the app has been in the background this long. */
@@ -64,9 +65,11 @@ export function AppLock() {
   if (!locked) return null;
   return (
     <View style={[StyleSheet.absoluteFill, s.wrap, { backgroundColor: c.background }]}>
-      <Text style={{ fontSize: 56 }}>🔒</Text>
+      <View style={[s.lockIcon, { backgroundColor: c.muted }]}>
+        <Icon name="lock" size={40} color={c.text} />
+      </View>
       <Text style={[s.title, { color: c.text }]}>Habit Tracker is locked</Text>
-      <Button title="Unlock" onPress={() => unlock()} style={{ minWidth: 180 }} />
+      <Button title="Unlock" icon="fingerprint" onPress={() => unlock()} style={{ minWidth: 180 }} />
     </View>
   );
 }
@@ -86,4 +89,5 @@ export async function confirmIdentity(): Promise<boolean> {
 const s = StyleSheet.create({
   wrap: { alignItems: 'center', justifyContent: 'center', gap: 16, zIndex: 1000, elevation: 1000 },
   title: { fontSize: 20, fontWeight: '700' },
+  lockIcon: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' },
 });

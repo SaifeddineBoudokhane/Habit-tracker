@@ -11,7 +11,7 @@ import { todayKey } from '@/lib/dates';
 import { syncReminders } from '@/notifications/scheduler';
 
 import { buildWidgetData, type WidgetData } from './model';
-import { HabitWidget, StreaksWidget, TodayWidget, WeekWidget } from './widgets';
+import { HabitWidget, StreaksWidget, TodayWidget, WeekWidget, type Size } from './widgets';
 
 /** Widget names must match app.json (react-native-android-widget plugin). */
 export const WIDGETS = {
@@ -21,20 +21,34 @@ export const WIDGETS = {
   week: 'Week',
 } as const;
 
-/** Android picks the variant matching the phone's light/dark mode. */
-export function renderFor(name: string, widgetId: number, data: WidgetData) {
+/** Sizes from app.json (targetCellWidth x targetCellHeight), used when Android doesn't report one. */
+export const DEFAULT_SIZES: Record<string, Size> = {
+  [WIDGETS.today]: { width: 320, height: 150 },
+  [WIDGETS.habit]: { width: 150, height: 150 },
+  [WIDGETS.streaks]: { width: 320, height: 150 },
+  [WIDGETS.week]: { width: 320, height: 170 },
+};
+
+const sizeOf = (name: string, s?: Partial<Size>): Size => {
+  const d = DEFAULT_SIZES[name] ?? DEFAULT_SIZES[WIDGETS.today];
+  return { width: s?.width || d.width, height: s?.height || d.height };
+};
+
+/** Android picks the variant matching the phone's light/dark mode. Layouts adapt to the widget's size. */
+export function renderFor(name: string, widgetId: number, data: WidgetData, reported?: Partial<Size>) {
+  const size = sizeOf(name, reported);
   const both = (make: (dark: boolean) => React.JSX.Element) => ({ light: make(false), dark: make(true) });
   switch (name) {
     case WIDGETS.habit: {
       const card = data.habits.get(data.settings.widgetHabits?.[String(widgetId)] ?? '') ?? null;
-      return both((dark) => <HabitWidget card={card} widgetId={widgetId} dark={dark} />);
+      return both((dark) => <HabitWidget card={card} widgetId={widgetId} dark={dark} size={size} />);
     }
     case WIDGETS.streaks:
-      return both((dark) => <StreaksWidget data={data} dark={dark} />);
+      return both((dark) => <StreaksWidget data={data} dark={dark} size={size} />);
     case WIDGETS.week:
-      return both((dark) => <WeekWidget data={data} dark={dark} />);
+      return both((dark) => <WeekWidget data={data} dark={dark} size={size} />);
     default:
-      return both((dark) => <TodayWidget data={data} dark={dark} />);
+      return both((dark) => <TodayWidget data={data} dark={dark} size={size} />);
   }
 }
 
@@ -69,7 +83,7 @@ export async function widgetTaskHandler({ widgetInfo, widgetAction, clickAction,
   if (tappedHabit) await logTap(clickActionData!.habitId as string);
 
   const data = await buildWidgetData();
-  renderWidget(renderFor(widgetName, widgetId, data));
+  renderWidget(renderFor(widgetName, widgetId, data, widgetInfo));
   if (tappedHabit) {
     void refreshWidgets({ except: widgetInfo, data });
     void syncReminders().catch(() => {});
@@ -84,7 +98,7 @@ export async function refreshWidgets(opts: { except?: WidgetInfo; data?: WidgetD
       const placed = await getWidgetInfo(name).catch(() => [] as WidgetInfo[]);
       for (const w of placed) {
         if (opts.except && opts.except.widgetName === name && opts.except.widgetId === w.widgetId) continue;
-        await requestWidgetUpdateById({ widgetName: name, widgetId: w.widgetId, renderWidget: () => renderFor(name, w.widgetId, data) });
+        await requestWidgetUpdateById({ widgetName: name, widgetId: w.widgetId, renderWidget: () => renderFor(name, w.widgetId, data, w) });
       }
     }
   } catch {

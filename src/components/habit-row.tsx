@@ -1,15 +1,20 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useColors } from '@/constants/theme';
+import { radius, space, tint, type as typo, useColors } from '@/constants/theme';
 import { minusStep, stepOf, tapped } from '@/data/actions';
 import { useStore } from '@/data/store';
 import { useTicker } from '@/data/timers';
+import { habitIcon } from '@/lib/habit-icon';
 import { formatDuration } from '@/lib/workouts';
 import { getEntry, isComplete, weekCount } from '@/lib/schedule';
 import { computeStats } from '@/lib/streaks';
 import type { Habit } from '@/lib/types';
 
+import { Icon, type UiIconName } from './icon';
 import { ProgressRing } from './progress-ring';
+import { HabitIconTile } from './ui';
+
+type Meta = { text: string; icon?: UiIconName; color?: string };
 
 export function HabitRow({ habit, date, onEdit }: { habit: Habit; date: string; onEdit: () => void }) {
   const c = useColors();
@@ -21,44 +26,49 @@ export function HabitRow({ habit, date, onEdit }: { habit: Habit; date: string; 
   const stats = computeStats(habit, index, today);
   const value = entry?.value ?? 0;
 
-  const parts: string[] = [];
-  if (entry?.skipped) parts.push('Skipped');
-  else if (habit.kind === 'count') parts.push(`${value} / ${habit.target} ${habit.unit}`.trim());
-  else if (habit.kind === 'duration') parts.push(`${value} / ${habit.target} min`);
+  const meta: Meta[] = [];
+  if (timerStart !== null) meta.push({ icon: 'timer', text: formatDuration((now - timerStart) / 1000), color: habit.color });
+  if (entry?.skipped) meta.push({ icon: 'skip_next', text: 'Skipped' });
+  else if (habit.kind === 'count') meta.push({ text: `${value} / ${habit.target} ${habit.unit}`.trim() });
+  else if (habit.kind === 'duration') meta.push({ text: `${value} / ${habit.target} min` });
   if (habit.schedule.type === 'perWeek' && habit.kind !== 'avoid')
-    parts.push(`${weekCount(habit, index, date)}/${habit.schedule.times} this week`);
+    meta.push({ icon: 'event_repeat', text: `${weekCount(habit, index, date)}/${habit.schedule.times} this week` });
   if (habit.kind === 'avoid') {
-    parts.push(value >= 1 ? 'Slipped' : `${stats.current} ${stats.current === 1 ? 'day' : 'days'} clean`);
+    meta.push(
+      value >= 1
+        ? { text: 'Slipped today', color: c.danger }
+        : { icon: 'shield', text: `${stats.current} ${stats.current === 1 ? 'day' : 'days'} clean` },
+    );
   } else if (stats.current > 0) {
-    parts.push(`🔥 ${stats.current} ${stats.unit === 'weeks' ? 'wk' : stats.current === 1 ? 'day' : 'days'}`);
+    meta.push({
+      icon: 'streak',
+      text: `${stats.current} ${stats.unit === 'weeks' ? (stats.current === 1 ? 'week' : 'weeks') : stats.current === 1 ? 'day' : 'days'}`,
+      color: '#f97316',
+    });
   }
 
-  if (timerStart !== null) parts.unshift(`⏱ ${formatDuration((now - timerStart) / 1000)}`);
-
   const onTap = () => updateEntry(habit.id, date, (e) => tapped(habit, e));
+  const settled = (done || !!entry?.skipped) && habit.kind !== 'avoid';
 
   return (
     <Pressable
       onPress={onEdit}
-      style={({ pressed }) => [
-        row.wrap,
-        { backgroundColor: c.card, borderColor: c.border, borderLeftWidth: 4, borderLeftColor: habit.color, opacity: pressed ? 0.85 : 1 },
-      ]}>
-      <View style={[row.icon, { backgroundColor: habit.color + '26' }]}>
-        <Text style={{ fontSize: 22 }}>{habit.emoji}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text
-          style={[
-            row.name,
-            { color: c.text },
-            (done || entry?.skipped) && habit.kind !== 'avoid' && { color: c.textSecondary },
-          ]}
-          numberOfLines={1}>
+      accessibilityHint="Opens details to log an exact value, skip or add a note"
+      style={({ pressed }) => [row.wrap, { backgroundColor: pressed ? c.muted : c.card }]}>
+      <HabitIconTile icon={habitIcon(habit)} color={habit.color} />
+      <View style={{ flex: 1, gap: 3 }}>
+        <Text style={[typo.rowTitle, { color: settled ? c.textSecondary : c.text }]} numberOfLines={1}>
           {habit.name}
         </Text>
-        {parts.length > 0 && (
-          <Text style={{ color: c.textSecondary, fontSize: 13, marginTop: 2 }}>{parts.join(' · ')}</Text>
+        {meta.length > 0 && (
+          <View style={row.meta}>
+            {meta.map((m, i) => (
+              <View key={i} style={row.metaItem}>
+                {m.icon && <Icon name={m.icon} size={14} color={m.color ?? c.textSecondary} />}
+                <Text style={[typo.subhead, { color: m.color && !m.icon ? m.color : c.textSecondary, fontVariant: ['tabular-nums'] }]}>{m.text}</Text>
+              </View>
+            ))}
+          </View>
         )}
       </View>
       <ActionButton
@@ -100,7 +110,9 @@ function ActionButton({
       <Pressable
         onPress={onPress}
         hitSlop={hit}
-        style={[row.slip, { borderColor: slipped ? c.danger : c.border, backgroundColor: slipped ? c.danger + '22' : 'transparent' }]}>
+        accessibilityRole="button"
+        accessibilityLabel={slipped ? 'Undo slip' : 'Log a slip'}
+        style={[row.slip, { backgroundColor: slipped ? tint(c.danger, 0.14) : c.muted }]}>
         <Text style={{ color: slipped ? c.danger : c.textSecondary, fontWeight: '600', fontSize: 13 }}>
           {slipped ? 'Slipped' : 'Slipped?'}
         </Text>
@@ -114,34 +126,52 @@ function ActionButton({
         onPress={onPress}
         hitSlop={hit}
         testID={`check-${habit.id}`}
+        accessibilityRole="checkbox"
+        accessibilityLabel={habit.name}
+        accessibilityState={{ checked: done }}
         style={[
           row.check,
-          { borderColor: done ? habit.color : c.border, backgroundColor: done ? habit.color : 'transparent' },
+          done
+            ? { backgroundColor: habit.color, borderColor: habit.color }
+            : skipped
+              ? { backgroundColor: c.muted, borderColor: c.muted }
+              : { borderColor: tint(habit.color, 0.55) },
         ]}>
-        <Text style={{ color: done ? '#fff' : c.textSecondary, fontSize: 20, fontWeight: '700' }}>
-          {skipped ? '–' : done ? '✓' : ''}
-        </Text>
+        {done && <Icon name="check" size={26} color="#fff" />}
+        {skipped && !done && <Icon name="skip_next" size={22} color={c.textSecondary} />}
       </Pressable>
     );
   }
 
   const step = stepOf(habit);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      {value > 0 && (
+        <Pressable
+          onPress={onMinus}
+          hitSlop={{ top: 10, bottom: 10, left: 6, right: 4 }}
+          testID={`minus-${habit.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={`Minus ${step}`}
+          style={({ pressed }) => [row.minus, { backgroundColor: pressed ? c.border : c.muted }]}>
+          <Icon name="remove" size={18} color={c.text} />
+        </Pressable>
+      )}
       <Pressable
-        onPress={onMinus}
-        disabled={value <= 0}
-        hitSlop={{ top: 10, bottom: 10, left: 6, right: 4 }}
-        testID={`minus-${habit.id}`}
-        accessibilityLabel={`Minus ${step}`}
-        style={[row.minus, { borderColor: c.border, opacity: value <= 0 ? 0.35 : 1 }]}>
-        <Text style={{ color: c.text, fontSize: 18, fontWeight: '700', marginTop: -2 }}>−</Text>
-      </Pressable>
-      <Pressable onPress={onPress} onLongPress={onLongPress} hitSlop={hit} testID={`plus-${habit.id}`} accessibilityLabel={`Plus ${step}`}>
-        <ProgressRing progress={value / habit.target} color={habit.color} track={c.muted} size={48} stroke={5}>
-          <Text style={{ color: done ? habit.color : c.text, fontWeight: '700', fontSize: done ? 18 : step >= 100 ? 11 : 13 }}>
-            {done ? '✓' : `+${step}`}
-          </Text>
+        onPress={onPress}
+        onLongPress={onLongPress}
+        hitSlop={hit}
+        testID={`plus-${habit.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={done ? `${habit.name} done` : `Plus ${step}`}>
+        <ProgressRing progress={value / habit.target} color={habit.color} track={tint(habit.color, 0.18)} size={48} stroke={5}>
+          {done ? (
+            <View style={[row.ringDone, { backgroundColor: habit.color }]}>
+              <Icon name="check" size={22} color="#fff" />
+            </View>
+          ) : (
+            <Text style={{ color: habit.color, fontWeight: '700', fontSize: step >= 100 ? 11 : 14 }}>{`+${step}`}</Text>
+          )}
         </ProgressRing>
       </Pressable>
     </View>
@@ -152,14 +182,18 @@ const row = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    gap: space.md,
+    paddingVertical: space.md,
+    paddingLeft: space.md,
+    paddingRight: space.lg,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
+    minHeight: 72,
   },
-  icon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  name: { fontSize: 16, fontWeight: '600' },
-  check: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  slip: { borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12 },
-  minus: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  meta: { flexDirection: 'row', flexWrap: 'wrap', columnGap: space.md, rowGap: 2 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  check: { width: 44, height: 44, borderRadius: 22, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
+  slip: { borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 12 },
+  minus: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  ringDone: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 });

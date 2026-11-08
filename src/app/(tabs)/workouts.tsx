@@ -2,7 +2,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Body, Button, Card, Label } from '@/components/ui';
+import { Icon, type UiIconName } from '@/components/icon';
+import { Body, Button, Card, Label, NavRow, SectionHeader } from '@/components/ui';
 import { useColors } from '@/constants/theme';
 import { newId, useStore } from '@/data/store';
 import { useWorkoutActions } from '@/data/workout-actions';
@@ -34,14 +35,14 @@ export default function WorkoutsScreen() {
   return (
     <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       {activeWorkout ? (
-        <Pressable onPress={() => router.push({ pathname: '/workout/[id]', params: { id: activeWorkout.id } })}>
-          <Card style={{ borderColor: c.accent, borderWidth: 1.5 }}>
-            <Text style={{ color: c.accent, fontWeight: '700', fontSize: 16 }}>▶ Resume “{activeWorkout.name}”</Text>
-            <Body muted>Started {formatDuration((now - activeWorkout.startedAt) / 1000)} ago</Body>
-          </Card>
-        </Pressable>
+        <NavRow
+          icon="play_arrow"
+          title={`Resume “${activeWorkout.name}”`}
+          subtitle={`Started ${formatDuration((now - activeWorkout.startedAt) / 1000)} ago`}
+          onPress={() => router.push({ pathname: '/workout/[id]', params: { id: activeWorkout.id } })}
+        />
       ) : (
-        <Button title="Start empty workout" onPress={() => start()} />
+        <Button title="Start empty workout" icon="play_arrow" onPress={() => start()} />
       )}
 
       <Card>
@@ -63,13 +64,18 @@ export default function WorkoutsScreen() {
                   { text: 'Delete', style: 'destructive', onPress: () => removeTemplate(t.id) },
                 ])
               }
-              style={[s.startBtn, { backgroundColor: c.accent }]}>
+              accessibilityRole="button"
+              accessibilityLabel={`Start ${t.name}`}
+              accessibilityHint="Long-press to delete the template"
+              style={({ pressed }) => [s.startBtn, { backgroundColor: c.accent, opacity: pressed ? 0.8 : 1 }]}>
+              <Icon name="play_arrow" size={18} color={c.accentText} />
               <Text style={{ color: c.accentText, fontWeight: '700' }}>Start</Text>
             </Pressable>
           </View>
         ))}
         <Button
-          title="+ New template"
+          title="New template"
+          icon="add"
           kind="secondary"
           style={{ marginTop: 10 }}
           onPress={() => {
@@ -80,28 +86,25 @@ export default function WorkoutsScreen() {
         />
       </Card>
 
-      <Pressable onPress={() => router.push('/exercises')}>
-        <Card style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: c.text, fontWeight: '600', fontSize: 16 }}>🏆 Exercises & personal records</Text>
-          <Text style={{ color: c.textSecondary, fontSize: 18 }}>›</Text>
-        </Card>
-      </Pressable>
+      <NavRow icon="trophy" iconColor="#eab308" title="Exercises & records" subtitle="Personal bests and progress charts" onPress={() => router.push('/exercises')} />
 
-      <Label>History</Label>
+      <SectionHeader title="History" icon="history" />
       {history.length === 0 && <Body muted>No workouts yet.</Body>}
       {history.map((w) => {
         const sum = summarize(w, sets);
         const names = [...new Set(sets.filter((x) => x.workoutId === w.id).map((x) => exName.get(x.exerciseId)))].filter(Boolean);
         return (
-          <Pressable key={w.id} onPress={() => router.push({ pathname: '/workout/[id]', params: { id: w.id } })}>
+          <Pressable key={w.id} onPress={() => router.push({ pathname: '/workout/[id]', params: { id: w.id } })} style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
             <Card>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ color: c.text, fontWeight: '700', fontSize: 16 }}>{w.name}</Text>
                 <Text style={{ color: c.textSecondary }}>{prettyDate(w.date, today)}</Text>
               </View>
-              <Text style={{ color: c.textSecondary, fontSize: 13, marginTop: 2 }}>
-                {formatDuration(sum.durationSec)} · {sum.sets} sets{sum.volume ? ` · ${Math.round(sum.volume)} kg` : ''}
-              </Text>
+              <View style={{ flexDirection: 'row', gap: 14, marginTop: 4 }}>
+                <WorkoutFact icon="timer" text={formatDuration(sum.durationSec)} />
+                <WorkoutFact icon="check" text={`${sum.sets} sets`} />
+                {sum.volume > 0 && <WorkoutFact icon="workouts" text={`${Math.round(sum.volume)} kg`} />}
+              </View>
               <Text style={{ color: c.textSecondary, fontSize: 13 }} numberOfLines={1}>
                 {names.join(', ')}
               </Text>
@@ -113,8 +116,18 @@ export default function WorkoutsScreen() {
   );
 }
 
+function WorkoutFact({ icon, text }: { icon: UiIconName; text: string }) {
+  const c = useColors();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <Icon name={icon} size={15} color={c.textSecondary} />
+      <Text style={{ color: c.textSecondary, fontSize: 13, fontVariant: ['tabular-nums'] }}>{text}</Text>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
   content: { padding: 16, gap: 12, paddingBottom: 48 },
   templateRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  startBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
+  startBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 10, paddingLeft: 12, paddingRight: 16, borderRadius: 999 },
 });
