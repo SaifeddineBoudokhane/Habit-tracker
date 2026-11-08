@@ -24,6 +24,10 @@ export interface TodayRow {
   /** Avoid habit that slipped today. */
   slipped: boolean;
   avoid: boolean;
+  /** Count/duration habits: logged amount and daily goal, shown on the widget button. */
+  numeric: boolean;
+  value: number;
+  target: number;
   streak: number;
   color: HexColor;
   /** Avoid habits open the app instead of logging from the widget. */
@@ -101,6 +105,9 @@ export async function buildWidgetData(): Promise<WidgetData> {
       progress: h.kind === 'avoid' ? (slipped ? 0 : 1) : done ? 1 : numeric ? Math.min(1, value / Math.max(1, h.target)) : 0,
       slipped,
       avoid: h.kind === 'avoid',
+      numeric,
+      value,
+      target: h.target,
       streak: h.kind === 'avoid' ? 0 : (info.get(h.id)?.current ?? 0),
       color: hex(h.color),
       tappable: h.kind !== 'avoid',

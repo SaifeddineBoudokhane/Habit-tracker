@@ -211,38 +211,61 @@ function Empty({ t, icon, title, body }: { t: Theme; icon: string; title: string
 /* ---------- Today ---------- */
 
 /**
- * Compact: a row of round habit buttons. Pending habits first, so the next tap is always in reach;
- * avoid habits last, since they can't be logged from a widget.
+ * What a Today button shows in its middle, so its state reads without labels:
+ * done = check mark on a solid disc; count habits = how far along ("3/20"); yes/no = the habit's icon.
  */
-function TodayButtons({ rows, t, size }: { rows: TodayRow[]; t: Theme; size: Size }) {
-  const slot = 56;
-  const fit = Math.max(2, Math.floor((size.width - 24) / slot));
-  const ordered = [
-    ...rows.filter((r) => !r.done && !r.avoid),
-    ...rows.filter((r) => r.done),
-    ...rows.filter((r) => r.avoid),
-  ];
+function buttonSvg(r: TodayRow, size: number, t: Theme) {
+  const cx = size / 2;
+  const stroke = Math.max(3, Math.round(size / 12));
+  const ring = cx - stroke / 2 - 0.5;
+  if (r.done) {
+    const s = size * 0.5;
+    return svgOpen(size) + `<circle cx="${cx}" cy="${cx}" r="${cx - 0.5}" fill="${r.color}"/>` + glyph(UI_ICONS.check, '#ffffff', cx - s / 2, cx - s / 2, s) + `</svg>`;
+  }
+  const tone = r.slipped ? t.danger : r.color;
+  const track =
+    `<circle cx="${cx}" cy="${cx}" r="${ring}" fill="${tone}" fill-opacity="0.12" stroke="${tone}" stroke-opacity="${r.slipped ? 1 : 0.3}" stroke-width="${stroke}"/>` +
+    (r.numeric ? arc(cx, ring, stroke, r.color, r.progress) : '');
+  if (r.numeric) {
+    // Big number done, small goal under it. Shrinks for long numbers like 1500/2000.
+    const big = Math.round(size * (String(r.value).length > 3 ? 0.24 : 0.32));
+    const small = Math.round(size * (String(r.target).length > 3 ? 0.16 : 0.2));
+    return (
+      svgOpen(size) +
+      track +
+      `<text x="${cx}" y="${cx - size * 0.02}" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="${big}" fill="${t.text}">${r.value}</text>` +
+      `<text x="${cx}" y="${cx + small + size * 0.02}" text-anchor="middle" font-family="sans-serif" font-size="${small}" fill="${t.sub}">/${r.target}</text>` +
+      `</svg>`
+    );
+  }
+  const s = size * 0.48;
+  const d = r.avoid ? UI_ICONS['shield-fill'] : HABIT_ICONS[r.icon].d;
+  return svgOpen(size) + track + glyph(d, tone, cx - s / 2, cx - s / 2, s) + `</svg>`;
+}
+
+/**
+ * Compact: a row of round habit buttons in your own order (they never move when tapped).
+ * Avoid habits go last: they open the app, since a slip is logged there.
+ */
+function TodayButtons({ rows, t, size, badge, labels }: { rows: TodayRow[]; t: Theme; size: Size; badge: number; labels: boolean }) {
+  // Names need ~56dp; without them buttons can sit closer so more habits fit in one row.
+  const slot = labels ? Math.max(badge + 8, 54) : badge + 8;
+  const fit = Math.max(2, Math.floor(size.width / slot));
+  const ordered = [...rows.filter((r) => !r.avoid), ...rows.filter((r) => r.avoid)];
   const overflow = ordered.length > fit ? ordered.length - (fit - 1) : 0;
   const shown = overflow ? ordered.slice(0, fit - 1) : ordered;
-  const badge = clamp(Math.floor(size.height - 24 - 30 - 18), 36, 52);
   return (
-    <FlexWidget style={{ flex: 1, flexDirection: 'row', width: 'match_parent', alignItems: 'center', justifyContent: 'space-around' }}>
+    <FlexWidget style={{ flex: 1, flexDirection: 'row', height: 'match_parent', alignItems: 'center', justifyContent: 'space-around' }}>
       {shown.map((r) => (
         <FlexWidget
           key={r.id}
           clickAction={r.avoid ? 'OPEN_APP' : 'TAP'}
           clickActionData={{ habitId: r.id }}
           style={{ width: slot, alignItems: 'center' }}>
-          <Svg
-            svg={badgeSvg({ icon: r.icon, color: r.color, progress: r.progress, done: r.done, size: badge, t, warn: r.slipped })}
-            size={badge}
-          />
-          <TextWidget
-            text={r.name}
-            maxLines={1}
-            truncate="END"
-            style={{ fontSize: 11, color: r.done ? t.sub : t.text, marginTop: 3, textAlign: 'center' }}
-          />
+          <Svg svg={buttonSvg(r, badge, t)} size={badge} />
+          {labels ? (
+            <TextWidget text={r.name} maxLines={1} truncate="END" style={{ fontSize: 11, color: t.text, marginTop: 3, textAlign: 'center' }} />
+          ) : null}
         </FlexWidget>
       ))}
       {overflow ? (
@@ -251,7 +274,7 @@ function TodayButtons({ rows, t, size }: { rows: TodayRow[]; t: Theme; size: Siz
             style={{ width: badge, height: badge, borderRadius: badge / 2, backgroundColor: t.card, alignItems: 'center', justifyContent: 'center' }}>
             <TextWidget text={`+${overflow}`} style={{ fontSize: 14, fontWeight: 'bold', color: t.sub }} />
           </FlexWidget>
-          <TextWidget text="More" maxLines={1} style={{ fontSize: 11, color: t.sub, marginTop: 3 }} />
+          {labels ? <TextWidget text="More" maxLines={1} style={{ fontSize: 11, color: t.sub, marginTop: 3 }} /> : null}
         </FlexWidget>
       ) : null}
     </FlexWidget>
@@ -303,8 +326,37 @@ function TodayList({ rows, t }: { rows: TodayRow[]; t: Theme }) {
   );
 }
 
+const SUMMARY_W = 46;
+
 export function TodayWidget({ data, dark, size }: { data: WidgetData; dark: boolean; size: Size }) {
   const t = theme(dark);
+  const allDone = data.total > 0 && data.done === data.total;
+
+  // One row tall: no header. The day's progress ring leads, then the buttons; names only if they fit.
+  if (size.height < 100) {
+    const labels = size.height >= 76;
+    const badge = clamp(size.height - 16 - (labels ? 16 : 0), 30, 44);
+    return (
+      <FlexWidget style={{ ...root(t, 8), flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 }}>
+        {/* Plain text, not a ring, so the day's total can't be mistaken for a habit button. */}
+        <FlexWidget clickAction="OPEN_APP" style={{ alignItems: 'center', width: SUMMARY_W }}>
+          <TextWidget
+            text={data.total ? `${data.done}/${data.total}` : '–'}
+            style={{ fontSize: 18, fontWeight: 'bold', color: allDone ? t.success : t.text }}
+          />
+          <TextWidget text={allDone ? 'all done' : 'done'} style={{ fontSize: 11, color: allDone ? t.success : t.sub }} />
+        </FlexWidget>
+        {data.rows.length === 0 ? (
+          <FlexWidget clickAction="OPEN_APP" style={{ flex: 1, paddingLeft: 8 }}>
+            <TextWidget text={data.message.title} maxLines={1} style={{ fontSize: 14, fontWeight: 'bold', color: t.text }} />
+          </FlexWidget>
+        ) : (
+          <TodayButtons rows={data.rows} t={t} size={{ width: size.width - 20 - SUMMARY_W, height: size.height }} badge={badge} labels={labels} />
+        )}
+      </FlexWidget>
+    );
+  }
+
   const compact = size.height < 170;
   return (
     <FlexWidget style={root(t)}>
@@ -312,7 +364,7 @@ export function TodayWidget({ data, dark, size }: { data: WidgetData; dark: bool
       {data.rows.length === 0 ? (
         <Empty t={t} icon={UI_ICONS.spa} title={data.message.title} body={compact ? undefined : data.message.body} />
       ) : compact ? (
-        <TodayButtons rows={data.rows} t={t} size={size} />
+        <TodayButtons rows={data.rows} t={t} size={{ width: size.width - 24, height: size.height }} badge={clamp(Math.floor(size.height - 24 - 30 - 18), 36, 52)} labels />
       ) : (
         <TodayList rows={data.rows} t={t} />
       )}

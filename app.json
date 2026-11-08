@@ -62,15 +62,16 @@
             {
               "name": "Today",
               "label": "Habits today",
-              "description": "Tap a habit to log it. Stretch it taller for a checklist.",
+              "description": "Tap a habit to log it. One row or more; stretch it taller for a checklist.",
               "minWidth": "250dp",
-              "minHeight": "110dp",
+              "minHeight": "40dp",
               "targetCellWidth": 4,
               "targetCellHeight": 2,
               "maxResizeWidth": "600dp",
               "maxResizeHeight": "700dp",
               "resizeMode": "horizontal|vertical",
-              "updatePeriodMillis": 1800000
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-previews/today.png"
             },
             {
               "name": "Habit",
@@ -83,7 +84,8 @@
               "maxResizeWidth": "300dp",
               "maxResizeHeight": "300dp",
               "resizeMode": "horizontal|vertical",
-              "updatePeriodMillis": 1800000
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-previews/habit.png"
             },
             {
               "name": "Streaks",
@@ -96,7 +98,8 @@
               "maxResizeWidth": "600dp",
               "maxResizeHeight": "400dp",
               "resizeMode": "horizontal|vertical",
-              "updatePeriodMillis": 1800000
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-previews/streaks.png"
             },
             {
               "name": "Week",
@@ -109,7 +112,8 @@
               "maxResizeWidth": "600dp",
               "maxResizeHeight": "500dp",
               "resizeMode": "horizontal|vertical",
-              "updatePeriodMillis": 1800000
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-previews/week.png"
             }
           ]
         }
