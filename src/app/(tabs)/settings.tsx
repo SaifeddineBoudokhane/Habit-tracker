@@ -1,4 +1,3 @@
-import Constants from 'expo-constants';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import * as Notifications from 'expo-notifications';
@@ -10,6 +9,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { canUseAppLock, confirmIdentity } from '@/components/app-lock';
 import { TimeField } from '@/components/time-field';
+import { UpdateCard } from '@/components/update-card';
 import { Icon } from '@/components/icon';
 import { Body, Button, Card, Chip, Label, NavRow, NumberInput, Segmented } from '@/components/ui';
 import { useColors } from '@/constants/theme';
@@ -358,8 +358,10 @@ export default function SettingsScreen() {
         <Body muted style={{ marginTop: 8, fontSize: 13 }}>To delete a single habit or workout, open it and use Delete there.</Body>
       </Card>
 
+      <UpdateCard />
+
       <Body muted style={{ textAlign: 'center', fontSize: 12 }}>
-        Habit Tracker {Constants.expoConfig?.version ?? ''} · fully offline
+        Your data stays on this phone. Checking for updates is the only time the app goes online.
       </Body>
     </KeyboardAwareScrollView>
   );
