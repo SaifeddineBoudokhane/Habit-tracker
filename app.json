@@ -89,7 +89,7 @@
               "name": "Streaks",
               "label": "Streaks",
               "description": "Today's progress and the streaks you're protecting.",
-              "minWidth": "250dp",
+              "minWidth": "110dp",
               "minHeight": "110dp",
               "targetCellWidth": 4,
               "targetCellHeight": 2,

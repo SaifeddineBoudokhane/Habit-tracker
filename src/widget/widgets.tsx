@@ -376,39 +376,68 @@ export function HabitWidget({ card, widgetId, dark, size }: { card: HabitCard | 
 
 /* ---------- Streaks ---------- */
 
+type StreakLine = WidgetData['topStreaks'][number];
+
+/** One streak: icon, optional name, flame (lit when done today) and the count. */
+function StreakRow({ s, t, showName }: { s: StreakLine; t: Theme; showName: boolean }) {
+  const lit = s.doneToday ? (s.avoid ? s.color : FLAME) : t.track;
+  return (
+    <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', width: 'match_parent', marginTop: 4 }}>
+      <Svg svg={iconSvg(HABIT_ICONS[s.icon].d, s.color, 16)} size={16} mr={8} />
+      <FlexWidget style={{ flex: 1 }}>
+        {showName ? (
+          <TextWidget text={s.name} maxLines={1} truncate="END" style={{ fontSize: 13, color: s.doneToday ? t.text : t.sub }} />
+        ) : null}
+      </FlexWidget>
+      <Svg svg={iconSvg(UI_ICONS[s.avoid ? 'shield-fill' : 'streak-fill'], lit, 14)} size={14} mr={2} />
+      <TextWidget text={`${s.current}${s.unit}`} style={{ fontSize: 13, fontWeight: 'bold', color: t.text }} />
+    </FlexWidget>
+  );
+}
+
 export function StreaksWidget({ data, dark, size }: { data: WidgetData; dark: boolean; size: Size }) {
   const t = theme(dark);
   const allDone = data.total > 0 && data.done === data.total;
+  const ringColor = allDone ? t.success : t.accent;
+  const progress = data.total ? data.done / data.total : 0;
+  const label = data.total ? `${data.done}/${data.total}` : '–';
+  const empty = <TextWidget text="No streaks yet. Today is day one." maxLines={3} style={{ fontSize: 12, color: t.sub, marginTop: 4 }} />;
+
+  // Narrow: stack a small ring + title above the list, so the list gets the full width.
+  if (size.width < 280) {
+    const ring = 40;
+    const lines = clamp(Math.floor((size.height - 28 - ring - 4) / 22), 0, 4);
+    // Under ~180dp there's no room for names next to the counts: icons carry the identity.
+    const showName = size.width >= 180;
+    // Long nudges don't fit beside the ring on the smallest sizes: say what's left instead.
+    const title = showName ? data.message.title : allDone ? 'All done' : data.total ? `${data.total - data.done} to go` : 'Streaks';
+    return (
+      <FlexWidget clickAction="OPEN_APP" style={root(t, 14)}>
+        <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', width: 'match_parent' }}>
+          <Svg svg={ringSvg(progress, ringColor, t, ring, label)} size={ring} mr={10} />
+          <FlexWidget style={{ flex: 1 }}>
+            <TextWidget text={title} maxLines={2} truncate="END" style={{ fontSize: 13, fontWeight: 'bold', color: t.text }} />
+          </FlexWidget>
+        </FlexWidget>
+        {lines === 0
+          ? null
+          : data.topStreaks.length === 0
+            ? empty
+            : data.topStreaks.slice(0, lines).map((s, i) => <StreakRow key={i} s={s} t={t} showName={showName} />)}
+      </FlexWidget>
+    );
+  }
+
   const ring = clamp(Math.round(size.height - 32), 56, 92);
   const lines = clamp(Math.floor((size.height - 24 - 24) / 22), 1, 4);
-  const streaks = data.topStreaks.slice(0, lines);
   return (
     <FlexWidget clickAction="OPEN_APP" style={{ ...root(t, 14), flexDirection: 'row', alignItems: 'center' }}>
-      <Svg
-        svg={ringSvg(data.total ? data.done / data.total : 0, allDone ? t.success : t.accent, t, ring, data.total ? `${data.done}/${data.total}` : '–')}
-        size={ring}
-        mr={14}
-      />
+      <Svg svg={ringSvg(progress, ringColor, t, ring, label)} size={ring} mr={14} />
       <FlexWidget style={{ flex: 1 }}>
         <TextWidget text={data.message.title} maxLines={1} truncate="END" style={{ fontSize: 15, fontWeight: 'bold', color: t.text, marginBottom: 4 }} />
-        {streaks.length === 0 ? (
-          <TextWidget text="No streaks yet. Today is day one." maxLines={2} style={{ fontSize: 12, color: t.sub }} />
-        ) : (
-          streaks.map((s, i) => (
-            <FlexWidget key={i} style={{ flexDirection: 'row', alignItems: 'center', width: 'match_parent', marginTop: 4 }}>
-              <Svg svg={iconSvg(HABIT_ICONS[s.icon].d, s.color, 16)} size={16} mr={8} />
-              <FlexWidget style={{ flex: 1 }}>
-                <TextWidget text={s.name} maxLines={1} truncate="END" style={{ fontSize: 13, color: s.doneToday ? t.text : t.sub }} />
-              </FlexWidget>
-              <Svg
-                svg={iconSvg(UI_ICONS[s.avoid ? 'shield-fill' : 'streak-fill'], s.doneToday ? (s.avoid ? s.color : FLAME) : t.track, 14)}
-                size={14}
-                mr={2}
-              />
-              <TextWidget text={`${s.current}${s.unit}`} style={{ fontSize: 13, fontWeight: 'bold', color: t.text }} />
-            </FlexWidget>
-          ))
-        )}
+        {data.topStreaks.length === 0
+          ? empty
+          : data.topStreaks.slice(0, lines).map((s, i) => <StreakRow key={i} s={s} t={t} showName />)}
       </FlexWidget>
     </FlexWidget>
   );
