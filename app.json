@@ -76,9 +76,9 @@
             {
               "name": "Habit",
               "label": "Single habit",
-              "description": "One habit, one tap to log it.",
-              "minWidth": "110dp",
-              "minHeight": "110dp",
+              "description": "One habit, one tap to log it. From 1x1 up.",
+              "minWidth": "40dp",
+              "minHeight": "40dp",
               "targetCellWidth": 2,
               "targetCellHeight": 2,
               "maxResizeWidth": "300dp",

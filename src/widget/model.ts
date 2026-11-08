@@ -1,5 +1,6 @@
 import type { HexColor } from 'react-native-android-widget';
 
+import { stepOf } from '@/data/actions';
 import { buildIndex, loadAll } from '@/data/db';
 import { addDays, todayKey, weekday } from '@/lib/dates';
 import { habitIcon, type HabitIconName } from '@/lib/habit-icon';
@@ -50,6 +51,13 @@ export interface HabitCard {
   streakUnit: string;
   message: string;
   tappable: boolean;
+  /** Count/duration habits: logged amount, daily goal and what one tap adds. */
+  numeric: boolean;
+  value: number;
+  target: number;
+  step: number;
+  unit: string;
+  dueToday: boolean;
 }
 
 export interface WeekRow {
@@ -150,6 +158,12 @@ export async function buildWidgetData(): Promise<WidgetData> {
       streakUnit: unit,
       message,
       tappable: h.kind !== 'avoid',
+      numeric: h.kind === 'count' || h.kind === 'duration',
+      value,
+      target: h.target,
+      step: stepOf(h),
+      unit: h.kind === 'duration' ? 'min' : h.unit,
+      dueToday: !!i?.dueToday,
     });
   }
 

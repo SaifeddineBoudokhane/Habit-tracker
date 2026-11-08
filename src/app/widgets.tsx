@@ -13,15 +13,25 @@ const LIST: { name: string; title: string; about: string; sizes: { label: string
   {
     name: WIDGETS.today,
     title: 'Habits today',
-    about: 'Tap a habit to log it. Small, it’s a row of buttons; stretch it taller for a checklist.',
+    about: 'Tap a habit to log it. Counts fill toward the goal, done habits get a check. Stretch it taller for a checklist.',
     sizes: [
-      { label: 'Small', w: 320, h: 130 },
+      { label: 'One row', w: 320, h: 72 },
+      { label: 'Two rows', w: 320, h: 140 },
       { label: 'Tall', w: 320, h: 260 },
     ],
   },
   { name: WIDGETS.streaks, title: 'Streaks', about: 'Today’s progress and the streaks you’re protecting.', sizes: [{ label: '', w: 320, h: 150 }] },
   { name: WIDGETS.week, title: 'Week view', about: 'The last 7 days for each habit at a glance.', sizes: [{ label: '', w: 320, h: 190 }] },
-  { name: WIDGETS.habit, title: 'Single habit', about: 'One habit, one tap. Place as many as you like.', sizes: [{ label: '', w: 150, h: 150 }] },
+  {
+    name: WIDGETS.habit,
+    title: 'Single habit',
+    about: 'One habit, one tap. From a single cell up; place as many as you like.',
+    sizes: [
+      { label: '1x1', w: 72, h: 72 },
+      { label: '2x1', w: 170, h: 72 },
+      { label: '2x2', w: 150, h: 150 },
+    ],
+  },
 ];
 
 export default function WidgetsScreen() {

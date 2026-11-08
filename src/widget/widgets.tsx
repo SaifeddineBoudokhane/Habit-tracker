@@ -214,10 +214,26 @@ function Empty({ t, icon, title, body }: { t: Theme; icon: string; title: string
  * What a Today button shows in its middle, so its state reads without labels:
  * done = check mark on a solid disc; count habits = how far along ("3/20"); yes/no = the habit's icon.
  */
-function buttonSvg(r: TodayRow, size: number, t: Theme) {
+type ButtonState = Pick<TodayRow, 'done' | 'color' | 'slipped' | 'avoid' | 'numeric' | 'value' | 'target' | 'progress' | 'icon'>;
+
+function buttonSvg(r: ButtonState, size: number, t: Theme, iconWithCount = false) {
   const cx = size / 2;
   const stroke = Math.max(3, Math.round(size / 12));
   const ring = cx - stroke / 2 - 0.5;
+  if (r.done && iconWithCount) {
+    // Alone on a 1x1: keep the habit's icon so you know which one is done, with a check badge.
+    const s = size * 0.46;
+    const b = size * 0.17;
+    const bx = cx + size * 0.27;
+    return (
+      svgOpen(size) +
+      `<circle cx="${cx}" cy="${cx}" r="${cx - 0.5}" fill="${r.color}"/>` +
+      glyph(HABIT_ICONS[r.icon].d, '#ffffff', cx - s / 2, cx - s / 2 - size * 0.02, s) +
+      `<circle cx="${bx}" cy="${bx}" r="${b}" fill="#ffffff"/>` +
+      glyph(UI_ICONS.check, r.color, bx - b * 0.75, bx - b * 0.75, b * 1.5) +
+      `</svg>`
+    );
+  }
   if (r.done) {
     const s = size * 0.5;
     return svgOpen(size) + `<circle cx="${cx}" cy="${cx}" r="${cx - 0.5}" fill="${r.color}"/>` + glyph(UI_ICONS.check, '#ffffff', cx - s / 2, cx - s / 2, s) + `</svg>`;
@@ -226,6 +242,20 @@ function buttonSvg(r: TodayRow, size: number, t: Theme) {
   const track =
     `<circle cx="${cx}" cy="${cx}" r="${ring}" fill="${tone}" fill-opacity="0.12" stroke="${tone}" stroke-opacity="${r.slipped ? 1 : 0.3}" stroke-width="${stroke}"/>` +
     (r.numeric ? arc(cx, ring, stroke, r.color, r.progress) : '');
+  if (r.numeric && iconWithCount) {
+    // No name next to it (e.g. a 1x1 widget): keep the habit's icon on top so you know which one it is.
+    const ic = size * 0.22;
+    const big = Math.round(size * (String(r.value).length > 3 ? 0.2 : 0.26));
+    const small = Math.round(size * (String(r.target).length > 3 ? 0.12 : 0.15));
+    return (
+      svgOpen(size) +
+      track +
+      glyph(HABIT_ICONS[r.icon].d, r.color, cx - ic / 2, cx - size * 0.34, ic) +
+      `<text x="${cx}" y="${cx + size * 0.1}" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="${big}" fill="${t.text}">${r.value}</text>` +
+      `<text x="${cx}" y="${cx + size * 0.27}" text-anchor="middle" font-family="sans-serif" font-size="${small}" fill="${t.sub}">/${r.target}</text>` +
+      `</svg>`
+    );
+  }
   if (r.numeric) {
     // Big number done, small goal under it. Shrinks for long numbers like 1500/2000.
     const big = Math.round(size * (String(r.value).length > 3 ? 0.24 : 0.32));
@@ -374,54 +404,80 @@ export function TodayWidget({ data, dark, size }: { data: WidgetData; dark: bool
 
 /* ---------- Single habit ---------- */
 
+/** One line under a single-habit widget: what a tap does, or once done, the streak it protects. */
+function habitHint(card: HabitCard, t: Theme): { text: string; icon?: string; color: HexColor } {
+  if (card.avoid)
+    return card.slipped
+      ? { text: 'Slipped today', icon: UI_ICONS['shield-fill'], color: t.danger }
+      : { text: `${card.streak} ${card.streak === 1 ? 'day' : 'days'} clean`, icon: UI_ICONS['shield-fill'], color: card.color };
+  if (card.done)
+    return card.streak > 0
+      ? { text: `${card.streak} ${card.streakUnit}`, icon: UI_ICONS['streak-fill'], color: FLAME }
+      : { text: 'Done for today', color: card.color };
+  if (card.numeric) return { text: `Tap for +${card.step}${card.unit === 'min' ? ' min' : ''}`, color: t.sub };
+  return { text: card.dueToday ? 'Tap when done' : 'Not due today', color: t.sub };
+}
+
+function Hint({ hint, t, center }: { hint: ReturnType<typeof habitHint>; t: Theme; center?: boolean }) {
+  return (
+    <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', justifyContent: center ? 'center' : 'flex-start', marginTop: 2 }}>
+      {hint.icon ? <Svg svg={iconSvg(hint.icon, hint.color, 14)} size={14} mr={3} /> : null}
+      <TextWidget text={hint.text} maxLines={1} truncate="END" style={{ fontSize: 12, fontWeight: hint.icon ? 'bold' : 'normal', color: hint.icon ? t.sub : hint.color }} />
+    </FlexWidget>
+  );
+}
+
 export function HabitWidget({ card, widgetId, dark, size }: { card: HabitCard | null; widgetId: number; dark: boolean; size: Size }) {
   const t = theme(dark);
+  const tiny = size.width < 100 || size.height < 100;
   if (!card) {
     return (
       <FlexWidget
         clickAction="OPEN_URI"
         clickActionData={{ uri: `${WIDGET_SCHEME}widget-setup?widgetId=${widgetId}` }}
-        style={{ ...root(t), justifyContent: 'center', alignItems: 'center' }}>
-        <FlexWidget style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: t.card, alignItems: 'center', justifyContent: 'center' }}>
-          <Svg svg={iconSvg(UI_ICONS.add, t.accent, 26)} size={26} />
+        style={{ ...root(t, tiny ? 6 : 12), justifyContent: 'center', alignItems: 'center' }}>
+        <FlexWidget style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: t.card, alignItems: 'center', justifyContent: 'center' }}>
+          <Svg svg={iconSvg(UI_ICONS.add, t.accent, 24)} size={24} />
         </FlexWidget>
-        <TextWidget text="Choose a habit" style={{ fontSize: 13, fontWeight: 'bold', color: t.text, marginTop: 8 }} />
+        {size.height >= 90 || size.width >= 150 ? (
+          <TextWidget text="Choose a habit" maxLines={1} style={{ fontSize: 13, fontWeight: 'bold', color: t.text, marginTop: 4 }} />
+        ) : null}
       </FlexWidget>
     );
   }
-  const badge = clamp(Math.round(Math.min(size.width, size.height) * 0.46), 44, 96);
-  const sub =
-    card.avoid
-      ? { icon: UI_ICONS['shield-fill'], color: card.slipped ? t.danger : card.color, text: card.slipped ? 'Slipped today' : `${card.streak} days clean` }
-      : card.streak > 0
-        ? { icon: UI_ICONS['streak-fill'], color: FLAME, text: `${card.streak} ${card.streakUnit}` }
-        : null;
-  return (
-    <FlexWidget
-      clickAction={card.tappable ? 'TAP' : 'OPEN_APP'}
-      clickActionData={{ habitId: card.id }}
-      style={{ ...root(t, 10), alignItems: 'center', justifyContent: 'center' }}>
-      <Svg
-        svg={badgeSvg({ icon: card.icon, color: card.color, progress: card.avoid ? 0 : card.progress, done: card.done, size: badge, t, warn: card.slipped })}
-        size={badge}
-      />
-      <TextWidget
-        text={card.name}
-        maxLines={1}
-        truncate="END"
-        style={{ fontSize: 14, fontWeight: 'bold', color: t.text, marginTop: 6, textAlign: 'center' }}
-      />
-      {/* Count habits show progress; everything else shows the streak it protects. */}
-      {!card.done && !card.avoid && card.status !== 'Tap to log' ? (
-        <TextWidget text={card.status} maxLines={1} style={{ fontSize: 12, color: t.sub }} />
-      ) : sub ? (
-        <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', marginTop: 1 }}>
-          <Svg svg={iconSvg(sub.icon, sub.color, 14)} size={14} mr={3} />
-          <TextWidget text={sub.text} maxLines={1} style={{ fontSize: 12, fontWeight: 'bold', color: t.sub }} />
+  const state = { ...card, progress: card.avoid ? 0 : card.progress };
+  const tap = { clickAction: card.tappable ? 'TAP' : 'OPEN_APP', clickActionData: { habitId: card.id } } as const;
+
+  // Wide and short (2x1, 3x1): ring on the left, name and hint beside it.
+  if (size.height < 100 && size.width >= 150) {
+    const badge = clamp(size.height - 16, 32, Math.min(76, Math.round(size.width * 0.3)));
+    return (
+      <FlexWidget {...tap} style={{ ...root(t, 8), flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 }}>
+        <Svg svg={buttonSvg(state, badge, t)} size={badge} mr={10} />
+        <FlexWidget style={{ flex: 1 }}>
+          <TextWidget text={card.name} maxLines={1} truncate="END" style={{ fontSize: 14, fontWeight: 'bold', color: t.text }} />
+          {size.height >= 56 ? <Hint hint={habitHint(card, t)} t={t} /> : null}
         </FlexWidget>
-      ) : (
-        <TextWidget text={card.done ? 'Done' : 'Tap to log'} maxLines={1} style={{ fontSize: 12, color: card.done ? card.color : t.sub }} />
-      )}
+      </FlexWidget>
+    );
+  }
+
+  // 1x1 (or narrow): just the ring, as big as fits. Count habits keep their icon inside.
+  if (tiny) {
+    const badge = Math.max(28, Math.min(size.width, size.height) - 12);
+    return (
+      <FlexWidget {...tap} style={{ ...root(t, 6), alignItems: 'center', justifyContent: 'center', borderRadius: Math.min(24, badge / 2 + 6) }}>
+        <Svg svg={buttonSvg(state, badge, t, true)} size={badge} />
+      </FlexWidget>
+    );
+  }
+
+  const badge = clamp(Math.round(Math.min(size.width, size.height * 0.9) * 0.5), 44, 104);
+  return (
+    <FlexWidget {...tap} style={{ ...root(t, 10), alignItems: 'center', justifyContent: 'center' }}>
+      <Svg svg={buttonSvg(state, badge, t)} size={badge} />
+      <TextWidget text={card.name} maxLines={1} truncate="END" style={{ fontSize: 14, fontWeight: 'bold', color: t.text, marginTop: 6, textAlign: 'center' }} />
+      <Hint hint={habitHint(card, t)} t={t} center />
     </FlexWidget>
   );
 }
