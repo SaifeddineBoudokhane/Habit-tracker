@@ -2,6 +2,7 @@ import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLayoutEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { DateField } from '@/components/date-field';
 import { FormScreen } from '@/components/form-screen';
 import { Icon } from '@/components/icon';
 import { TimeField } from '@/components/time-field';
@@ -10,7 +11,8 @@ import { HABIT_ICONS } from '@/constants/icons';
 import { HABIT_COLORS, isHexColor, radius, tint, useColors } from '@/constants/theme';
 import { DEFAULT_HABIT_ICON, HABIT_ICON_NAMES, guessIcon, habitIcon, type HabitIconName } from '@/lib/habit-icon';
 import { newId, useStore } from '@/data/store';
-import { getWeekStartDay, weekdayShort } from '@/lib/dates';
+import { addDays, diffDays, getWeekStartDay, weekdayShort } from '@/lib/dates';
+import { backfillDays } from '@/lib/schedule';
 import type { Habit, HabitGroup, HabitKind, Reminder, Schedule, Weekday } from '@/lib/types';
 import { ensurePermission } from '@/notifications/scheduler';
 
@@ -52,7 +54,7 @@ export default function EditHabitScreen() {
   const c = useColors();
   const nav = useNavigation();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { habits, saveHabit, today } = useStore();
+  const { habits, saveHabit, addEntries, index, today } = useStore();
   const existing = habits.find((h) => h.id === id);
 
   const [name, setName] = useState(existing?.name ?? '');
@@ -78,6 +80,11 @@ export default function EditHabitScreen() {
   const [everyN, setEveryN] = useState(existing?.schedule.type === 'everyN' ? existing.schedule.n : 2);
   const [group, setGroup] = useState<HabitGroup>(existing?.group ?? 'anytime');
   const [reminders, setReminders] = useState<Reminder[]>(existing?.reminders ?? []);
+  const [startDate, setStartDate] = useState(existing?.startDate ?? today);
+  // Days between the chosen start and the day you began tracking in the app.
+  const [backfill, setBackfill] = useState<'done' | 'empty'>('done');
+  const trackedFrom = existing ? (existing.startDate < today ? existing.startDate : today) : today;
+  const earlierStart = startDate < trackedFrom;
 
   useLayoutEffect(() => {
     nav.setOptions({ title: existing ? 'Edit habit' : 'New habit' });
@@ -115,10 +122,21 @@ export default function EditHabitScreen() {
       group,
       archived: existing?.archived ?? false,
       sortOrder: existing?.sortOrder ?? habits.length,
-      startDate: existing?.startDate ?? today,
+      startDate: startDate > today ? today : startDate,
     };
     // Close straight away; the save finishes in the background.
     saveHabit(habit);
+    if (earlierStart && backfill === 'done') {
+      const value = habit.kind === 'check' ? 1 : habit.target;
+      addEntries(
+        backfillDays(habit, index, habit.startDate, addDays(trackedFrom, -1)).map((date) => ({
+          habitId: habit.id,
+          date,
+          value,
+          skipped: false,
+        })),
+      );
+    }
     router.back();
     if (reminders.length > 0) {
       const ok = await ensurePermission(true);
@@ -253,6 +271,39 @@ export default function EditHabitScreen() {
           )}
         </Card>
       )}
+
+      <Card>
+        <Label>Started on</Label>
+        <DateField value={startDate} onChange={setStartDate} max={today} />
+        <Body muted style={{ marginTop: 8, fontSize: 13 }}>
+          {startDate === today
+            ? 'Counting starts today. Pick an earlier date if you were already doing this before using the app.'
+            : `Counting from ${diffDays(startDate, today)} day${diffDays(startDate, today) === 1 ? '' : 's'} ago.`}
+        </Body>
+        {earlierStart && kind === 'avoid' && (
+          <Body muted style={{ marginTop: 8, fontSize: 13 }}>
+            Every day since then counts as clean. Log any slips from the habit’s calendar.
+          </Body>
+        )}
+        {earlierStart && kind !== 'avoid' && (
+          <View style={{ marginTop: 12, gap: 8 }}>
+            <Body>Days before {existing ? 'the old start date' : 'today'}</Body>
+            <Segmented
+              options={[
+                { value: 'done', label: 'Mark as done' },
+                { value: 'empty', label: 'Leave empty' },
+              ]}
+              value={backfill}
+              onChange={setBackfill}
+            />
+            <Body muted style={{ fontSize: 13 }}>
+              {backfill === 'done'
+                ? 'Your streak starts from that date. Days you already logged are kept; fix any misses from the habit’s calendar.'
+                : 'You can fill them in yourself from the habit’s calendar. Empty days count as missed.'}
+            </Body>
+          </View>
+        )}
+      </Card>
 
       <Card>
         <Label>Color</Label>
