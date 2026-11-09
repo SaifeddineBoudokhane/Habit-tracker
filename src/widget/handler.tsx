@@ -6,7 +6,8 @@ import type { WidgetInfo, WidgetTaskHandlerProps } from 'react-native-android-wi
 import { getWidgetInfo, requestWidgetUpdateById } from 'react-native-android-widget';
 
 import { emptyEntry, tapped } from '@/data/actions';
-import { getEntryRow, loadAll, patchSettings, putEntry } from '@/data/db';
+import { applyDayEndHour, getHabitRow, loadAll, patchSettings, updateEntryRow } from '@/data/db';
+import { coalesce } from '@/lib/coalesce';
 import { todayKey } from '@/lib/dates';
 import { syncReminders } from '@/notifications/scheduler';
 
@@ -52,14 +53,43 @@ export function renderFor(name: string, widgetId: number, data: WidgetData, repo
   }
 }
 
+/** One tap: +step (or toggle), read and written as a single queued step so fast taps all count. */
 async function logTap(habitId: string) {
-  const { habits } = await loadAll();
-  const habit = habits.find((h) => h.id === habitId);
+  const habit = await getHabitRow(habitId);
   if (!habit) return;
+  await applyDayEndHour();
   const today = todayKey();
-  const e = (await getEntryRow(habit.id, today)) ?? emptyEntry(habit.id, today);
-  await putEntry(tapped(habit, e));
+  await updateEntryRow(habit.id, today, (e) => tapped(habit, e ?? emptyEntry(habit.id, today)));
 }
+
+/** The widget that was tapped last: it is redrawn before the others, so the tap shows up quickly. */
+let tappedWidget: { info: WidgetInfo; render: WidgetTaskHandlerProps['renderWidget'] } | null = null;
+
+/**
+ * Every redraw goes through here, one at a time, each from freshly read data. Taps that land while
+ * a redraw is running share the next one, so a slower, older picture can never replace a newer one
+ * and ten quick taps don't cost ten full redraws.
+ */
+const redraw = coalesce(async () => {
+  const first = tappedWidget;
+  tappedWidget = null;
+  const data = await buildWidgetData();
+  if (first) first.render(renderFor(first.info.widgetName, first.info.widgetId, data, first.info));
+  try {
+    for (const name of Object.values(WIDGETS)) {
+      const placed = await getWidgetInfo(name).catch(() => [] as WidgetInfo[]);
+      for (const w of placed) {
+        if (first && first.info.widgetName === name && first.info.widgetId === w.widgetId) continue;
+        await requestWidgetUpdateById({ widgetName: name, widgetId: w.widgetId, renderWidget: () => renderFor(name, w.widgetId, data, w) });
+      }
+    }
+  } catch {
+    // Not Android, or widgets unavailable.
+  }
+});
+
+/** Reminders depend on what's done today; after a burst of taps, once is enough. */
+const resyncReminders = coalesce(() => syncReminders());
 
 /** Runs headlessly when Android asks a widget to draw, or when it's tapped. */
 export async function widgetTaskHandler({ widgetInfo, widgetAction, clickAction, clickActionData, renderWidget }: WidgetTaskHandlerProps) {
@@ -72,6 +102,13 @@ export async function widgetTaskHandler({ widgetInfo, widgetAction, clickAction,
     }
     return;
   }
+  if (widgetAction === 'WIDGET_CLICK' && clickAction === 'TAP' && typeof clickActionData?.habitId === 'string') {
+    await logTap(clickActionData.habitId);
+    tappedWidget = { info: widgetInfo, render: renderWidget };
+    await redraw();
+    await resyncReminders();
+    return;
+  }
   if (widgetAction === 'WIDGET_ADDED' && widgetName === WIDGETS.habit) {
     // Placed from a habit's "Add to home screen" button: assign that habit.
     const { settings } = await loadAll();
@@ -79,32 +116,12 @@ export async function widgetTaskHandler({ widgetInfo, widgetAction, clickAction,
       await patchSettings({ widgetHabits: { ...settings.widgetHabits, [String(widgetId)]: settings.pendingWidgetHabit }, pendingWidgetHabit: '' });
     }
   }
-  const tappedHabit = widgetAction === 'WIDGET_CLICK' && clickAction === 'TAP' && typeof clickActionData?.habitId === 'string';
-  if (tappedHabit) await logTap(clickActionData!.habitId as string);
-
   const data = await buildWidgetData();
   renderWidget(renderFor(widgetName, widgetId, data, widgetInfo));
-  if (tappedHabit) {
-    void refreshWidgets({ except: widgetInfo, data });
-    void syncReminders().catch(() => {});
-  }
 }
 
 /** Redraw every placed widget after data changed. Cheap no-op when none are placed. */
-export async function refreshWidgets(opts: { except?: WidgetInfo; data?: WidgetData } = {}): Promise<void> {
-  try {
-    const data = opts.data ?? (await buildWidgetData());
-    for (const name of Object.values(WIDGETS)) {
-      const placed = await getWidgetInfo(name).catch(() => [] as WidgetInfo[]);
-      for (const w of placed) {
-        if (opts.except && opts.except.widgetName === name && opts.except.widgetId === w.widgetId) continue;
-        await requestWidgetUpdateById({ widgetName: name, widgetId: w.widgetId, renderWidget: () => renderFor(name, w.widgetId, data, w) });
-      }
-    }
-  } catch {
-    // Not Android, or widgets unavailable.
-  }
-}
+export const refreshWidgets = (): Promise<void> => redraw();
 
 /** Kept for callers that only know "something changed". */
 export const refreshWidget = () => refreshWidgets();

@@ -207,6 +207,32 @@ export async function getEntryRow(habitId: string, date: string): Promise<Entry 
   return r ? toEntry(r) : null;
 }
 
+export async function getHabitRow(id: string): Promise<Habit | null> {
+  const db = await getDb();
+  const r = await db.getFirstAsync<{ data: string }>('SELECT data FROM habits WHERE id = ?', id);
+  return r ? (JSON.parse(r.data) as Habit) : null;
+}
+
+/** Applies the stored "Day ends at" hour, so todayKey() is right without loading everything. */
+export async function applyDayEndHour(): Promise<void> {
+  const db = await getDb();
+  const r = await db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'dayEndHour'");
+  try {
+    setDayEndHour(r ? JSON.parse(r.value) : DEFAULT_SETTINGS.dayEndHour);
+  } catch {
+    setDayEndHour(DEFAULT_SETTINGS.dayEndHour);
+  }
+}
+
+/**
+ * Read an entry, change it and write it back as one step in the write queue. Background taps
+ * (home-screen widget) can arrive several at once; reading outside the queue would let them all
+ * start from the same value and count as one.
+ */
+export function updateEntryRow(habitId: string, date: string, change: (e: Entry | null) => Entry): Promise<void> {
+  return enqueueWrite(async () => putEntryNow(change(await getEntryRow(habitId, date))));
+}
+
 export function isEmptyEntry(e: Entry): boolean {
   return e.value <= 0 && !e.skipped && !e.note;
 }
