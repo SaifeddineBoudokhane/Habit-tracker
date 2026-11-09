@@ -5,7 +5,7 @@
 import type { WidgetInfo, WidgetTaskHandlerProps } from 'react-native-android-widget';
 import { getWidgetInfo, requestWidgetUpdateById } from 'react-native-android-widget';
 
-import { emptyEntry, tapped } from '@/data/actions';
+import { emptyEntry, markDone, tapped } from '@/data/actions';
 import { applyDayEndHour, getHabitRow, loadAll, patchSettings, updateEntryRow } from '@/data/db';
 import { coalesce } from '@/lib/coalesce';
 import { todayKey } from '@/lib/dates';
@@ -53,13 +53,16 @@ export function renderFor(name: string, widgetId: number, data: WidgetData, repo
   }
 }
 
-/** One tap: +step (or toggle), read and written as a single queued step so fast taps all count. */
-async function logTap(habitId: string) {
+/**
+ * One tap, read and written as a single queued step so fast taps all count.
+ * TAP: +step (or toggle). DONE: the whole goal at once.
+ */
+async function logTap(habitId: string, action: 'TAP' | 'DONE') {
   const habit = await getHabitRow(habitId);
   if (!habit) return;
   await applyDayEndHour();
   const today = todayKey();
-  await updateEntryRow(habit.id, today, (e) => tapped(habit, e ?? emptyEntry(habit.id, today)));
+  await updateEntryRow(habit.id, today, (e) => (action === 'DONE' ? markDone : tapped)(habit, e ?? emptyEntry(habit.id, today)));
 }
 
 /** The widget that was tapped last: it is redrawn before the others, so the tap shows up quickly. */
@@ -102,8 +105,8 @@ export async function widgetTaskHandler({ widgetInfo, widgetAction, clickAction,
     }
     return;
   }
-  if (widgetAction === 'WIDGET_CLICK' && clickAction === 'TAP' && typeof clickActionData?.habitId === 'string') {
-    await logTap(clickActionData.habitId);
+  if (widgetAction === 'WIDGET_CLICK' && (clickAction === 'TAP' || clickAction === 'DONE') && typeof clickActionData?.habitId === 'string') {
+    await logTap(clickActionData.habitId, clickAction);
     tappedWidget = { info: widgetInfo, render: renderWidget };
     await redraw();
     await resyncReminders();
