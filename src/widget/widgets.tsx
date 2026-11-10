@@ -261,13 +261,63 @@ function buttonSvg(r: ButtonState, size: number, t: Theme, iconWithCount = false
   return out + `</svg>`;
 }
 
+/**
+ * The round button is the only thing that logs a tap; the widget around it opens the app.
+ * `padX`/`padY` grow the touch target a little past the ring without moving anything else.
+ */
+function TapRing(o: { svg: string; size: number; habitId: string; tappable: boolean; padX?: number; padY?: number; mr?: number }) {
+  const padX = o.padX ?? 0;
+  const padY = o.padY ?? 0;
+  return (
+    <FlexWidget
+      {...(o.tappable ? { clickAction: 'TAP', clickActionData: { habitId: o.habitId } } : {})}
+      style={{
+        width: o.size + padX * 2,
+        height: o.size + padY * 2,
+        borderRadius: (o.size + Math.min(padX, padY) * 2) / 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: o.mr ?? 0,
+      }}>
+      <Svg svg={o.svg} size={o.size} />
+    </FlexWidget>
+  );
+}
+
+/** Small check on a soft disc: "I did the whole goal". */
+function fillSvg(color: string, t: Theme, size: number) {
+  const cx = size / 2;
+  const s = size * 0.62;
+  return svgOpen(size) + `<circle cx="${cx}" cy="${cx}" r="${cx}" fill="${t.card}"/>` + glyph(UI_ICONS.check, color, cx - s / 2, cx - s / 2, s) + `</svg>`;
+}
+
+/** Size of the "whole goal" button's picture and of its touch target. */
+const FILL = 28;
+const FILL_HIT = 36;
+
+/**
+ * Count/duration habits: one tap here logs the whole goal (10/10) instead of tapping the ring ten times.
+ * A widget can't tell a long press from a tap (the home screen keeps long presses), hence a button.
+ */
+function FillButton({ habitId, color, t }: { habitId: string; color: string; t: Theme }) {
+  return (
+    <FlexWidget
+      clickAction="DONE"
+      clickActionData={{ habitId }}
+      style={{ width: FILL_HIT, height: FILL_HIT, borderRadius: FILL_HIT / 2, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg svg={fillSvg(color, t, FILL)} size={FILL} />
+    </FlexWidget>
+  );
+}
+
 /** Height kept for the name under a button (one 11sp line, with headroom for bigger system fonts). */
 const NAME_LINE = 24;
 
 /**
  * Compact: a row of habit buttons in your own order (they never move when tapped), sharing the width
  * equally. With room to spare, each name sits beside its ring; otherwise under it.
- * Avoid habits go last: they open the app, since a slip is logged there.
+ * Only the rings log a tap; names and the space between open the app (the widget's root does that).
+ * Avoid habits go last: they open the app too, since a slip is logged there.
  */
 function TodayButtons({ rows, t, width, badge }: { rows: TodayRow[]; t: Theme; width: number; badge: number }) {
   const minSlot = Math.max(badge + 8, 56);
@@ -282,12 +332,10 @@ function TodayButtons({ rows, t, width, badge }: { rows: TodayRow[]; t: Theme; w
       {shown.map((r) => (
         <FlexWidget
           key={r.id}
-          clickAction={r.avoid ? 'OPEN_APP' : 'TAP'}
-          clickActionData={{ habitId: r.id }}
           style={{ flex: 1, height: 'match_parent', flexDirection: beside ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 }}>
-          <Svg svg={buttonSvg(r, badge, t)} size={badge} />
+          <TapRing svg={buttonSvg(r, badge, t)} size={badge} habitId={r.id} tappable={!r.avoid} padX={4} />
           {beside ? (
-            <FlexWidget style={{ flex: 1, marginLeft: 8 }}>
+            <FlexWidget style={{ flex: 1, marginLeft: 4 }}>
               <TextWidget text={r.name} maxLines={2} truncate="END" style={{ fontSize: 13, fontWeight: 'bold', color: t.text }} />
             </FlexWidget>
           ) : (
@@ -296,7 +344,7 @@ function TodayButtons({ rows, t, width, badge }: { rows: TodayRow[]; t: Theme; w
         </FlexWidget>
       ))}
       {overflow ? (
-        <FlexWidget clickAction="OPEN_APP" style={{ flex: 1, height: 'match_parent', alignItems: 'center', justifyContent: 'center' }}>
+        <FlexWidget style={{ flex: 1, height: 'match_parent', alignItems: 'center', justifyContent: 'center' }}>
           <FlexWidget
             style={{ width: badge, height: badge, borderRadius: badge / 2, backgroundColor: t.card, alignItems: 'center', justifyContent: 'center' }}>
             <TextWidget text={`+${overflow}`} style={{ fontSize: 14, fontWeight: 'bold', color: t.sub }} />
@@ -343,8 +391,13 @@ function TodayList({ rows, t }: { rows: TodayRow[]; t: Theme }) {
             />
           ) : (
             <FlexWidget style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {r.status ? <TextWidget text={r.status} style={{ fontSize: 12, fontWeight: 'bold', color: t.sub, marginRight: 8 }} /> : null}
-              <Svg svg={checkSvg(r.done, r.color, t)} size={26} />
+              {r.status ? <TextWidget text={r.status} style={{ fontSize: 12, fontWeight: 'bold', color: t.sub }} /> : null}
+              {/* Count habits: the row adds one step, the circle logs the whole goal. */}
+              <FlexWidget
+                {...(r.numeric && !r.done ? { clickAction: 'DONE', clickActionData: { habitId: r.id } } : {})}
+                style={{ paddingLeft: 8, borderRadius: 13 }}>
+                <Svg svg={checkSvg(r.done, r.color, t)} size={26} />
+              </FlexWidget>
             </FlexWidget>
           )}
         </FlexWidget>
@@ -362,9 +415,9 @@ export function TodayWidget({ data, dark, size }: { data: WidgetData; dark: bool
     // taller than its 11sp, and launchers often report a bit more height than they draw, so reserve generously.
     const badge = clamp(size.height - 12 - NAME_LINE, 26, 42);
     return (
-      <FlexWidget style={{ ...root(t, 6), flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 }}>
+      <FlexWidget clickAction="OPEN_APP" style={{ ...root(t, 6), flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 }}>
         {data.rows.length === 0 ? (
-          <FlexWidget clickAction="OPEN_APP" style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingLeft: 8 }}>
+          <FlexWidget style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingLeft: 8 }}>
             <Svg svg={iconSvg(UI_ICONS.spa, t.accent, 22)} size={22} mr={8} />
             <TextWidget text={data.message.title} maxLines={1} style={{ fontSize: 14, fontWeight: 'bold', color: t.text }} />
           </FlexWidget>
@@ -377,7 +430,7 @@ export function TodayWidget({ data, dark, size }: { data: WidgetData; dark: bool
 
   const compact = size.height < 170;
   return (
-    <FlexWidget style={root(t)}>
+    <FlexWidget clickAction="OPEN_APP" style={root(t)}>
       <DayHeader data={data} t={t} title={data.dayName} />
       {data.rows.length === 0 ? (
         <Empty t={t} icon={UI_ICONS.spa} title={data.message.title} body={compact ? undefined : data.message.body} />
@@ -434,18 +487,24 @@ export function HabitWidget({ card, widgetId, dark, size }: { card: HabitCard | 
     );
   }
   const state = { ...card, progress: card.avoid ? 0 : card.progress };
-  const tap = { clickAction: card.tappable ? 'TAP' : 'OPEN_APP', clickActionData: { habitId: card.id } } as const;
+  // The ring logs the tap; the rest of the widget opens the app.
+  const ring = (svg: string, size: number, pad: { padX?: number; padY?: number; mr?: number } = {}) => (
+    <TapRing svg={svg} size={size} habitId={card.id} tappable={card.tappable} {...pad} />
+  );
+
+  const canFill = card.numeric && card.tappable && !card.done;
 
   // Wide and short (2x1, 3x1): ring on the left, name and hint beside it.
   if (size.height < 100 && size.width >= 150) {
     const badge = clamp(size.height - 16, 32, Math.min(76, Math.round(size.width * 0.3)));
     return (
-      <FlexWidget {...tap} style={{ ...root(t, 8), flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 }}>
-        <Svg svg={buttonSvg(state, badge, t)} size={badge} mr={10} />
+      <FlexWidget clickAction="OPEN_APP" style={{ ...root(t, 8), flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 }}>
+        {ring(buttonSvg(state, badge, t), badge, { padX: 4, mr: 6 })}
         <FlexWidget style={{ flex: 1 }}>
           <TextWidget text={card.name} maxLines={1} truncate="END" style={{ fontSize: 14, fontWeight: 'bold', color: t.text }} />
           {size.height >= 56 ? <Hint hint={habitHint(card, t)} t={t} /> : null}
         </FlexWidget>
+        {canFill && size.width >= 190 ? <FillButton habitId={card.id} color={card.color} t={t} /> : null}
       </FlexWidget>
     );
   }
@@ -454,17 +513,24 @@ export function HabitWidget({ card, widgetId, dark, size }: { card: HabitCard | 
   if (tiny) {
     const badge = Math.max(28, Math.min(size.width, size.height) - 12);
     return (
-      <FlexWidget {...tap} style={{ ...root(t, 6), alignItems: 'center', justifyContent: 'center', borderRadius: Math.min(24, badge / 2 + 6) }}>
-        <Svg svg={buttonSvg(state, badge, t, true)} size={badge} />
+      <FlexWidget clickAction="OPEN_APP" style={{ ...root(t, 6), alignItems: 'center', justifyContent: 'center', borderRadius: Math.min(24, badge / 2 + 6) }}>
+        {ring(buttonSvg(state, badge, t, true), badge)}
       </FlexWidget>
     );
   }
 
-  const badge = clamp(Math.round(Math.min(size.width, size.height * 0.9) * 0.5), 44, 104);
+  // The "whole goal" button sits right of the ring; an empty box of the same width on the left keeps the ring centred.
+  const showFill = canFill && size.width >= 140;
+  const room = showFill ? size.width - 20 - 8 - FILL_HIT * 2 : size.width;
+  const badge = clamp(Math.round(Math.min(size.width, size.height * 0.9, room * 2) * 0.5), 44, 104);
   return (
-    <FlexWidget {...tap} style={{ ...root(t, 10), alignItems: 'center', justifyContent: 'center' }}>
-      <Svg svg={buttonSvg(state, badge, t)} size={badge} />
-      <TextWidget text={card.name} maxLines={1} truncate="END" style={{ fontSize: 14, fontWeight: 'bold', color: t.text, marginTop: 6, textAlign: 'center' }} />
+    <FlexWidget clickAction="OPEN_APP" style={{ ...root(t, 10), alignItems: 'center', justifyContent: 'center' }}>
+      <FlexWidget style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {showFill ? <FlexWidget style={{ width: FILL_HIT, height: FILL_HIT }} /> : null}
+        {ring(buttonSvg(state, badge, t), badge, { padX: 4, padY: 4 })}
+        {showFill ? <FillButton habitId={card.id} color={card.color} t={t} /> : null}
+      </FlexWidget>
+      <TextWidget text={card.name} maxLines={1} truncate="END" style={{ fontSize: 14, fontWeight: 'bold', color: t.text, marginTop: 2, textAlign: 'center' }} />
       <Hint hint={habitHint(card, t)} t={t} center />
     </FlexWidget>
   );
